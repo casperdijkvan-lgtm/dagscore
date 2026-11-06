@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dagscore">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EBF0F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E151B" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Dagscore</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Familjen+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: één smalle kolom als dagkaart. Datum bovenaan, vier vragen als niveaumeters, opslaan onderaan. */
+:root {
+  --bg: #EBF0F2;
+  --surface: #FAFCFD;
+  --ink: #12202B;
+  --muted: #55656F;
+  --line: #CFD9DF;
+  --accent: #1B5A86;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #D3E3EE;
+  --warm: #B3522B;
+  --warm-ink: #FFFFFF;
+  --ok: #2C7A55;
+  --font-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E151B; --surface: #152029; --ink: #E4ECF1; --muted: #93A4B0; --line: #27353F;
+    --accent: #72B4E2; --accent-ink: #0A1620; --accent-soft: #1D3546;
+    --warm: #E58A62; --warm-ink: #1A0D07; --ok: #6CC79A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E151B; --surface: #152029; --ink: #E4ECF1; --muted: #93A4B0; --line: #27353F;
+  --accent: #72B4E2; --accent-ink: #0A1620; --accent-soft: #1D3546;
+  --warm: #E58A62; --warm-ink: #1A0D07; --ok: #6CC79A;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding-block: 1.75rem 3rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Kop */
+.top { display: flex; flex-direction: column; gap: .4rem; }
+.eyebrow {
+  margin: 0;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 7.5vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+}
+.date-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+  color: var(--muted);
+  font-size: .9rem;
+}
+.date-row input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: .3rem .5rem;
+}
+
+/* Vragen */
+.questions { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.q {
+  padding-block: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  min-width: 0;
+}
+.q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.q-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+.q-value {
+  font-family: var(--font-mono);
+  font-size: .85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.q-value strong { color: var(--ink); font-weight: 500; }
+.choices { position: relative; display: grid; gap: 4px; }
+.choices.scale { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.choices.yesno { grid-template-columns: 1fr 1fr; gap: 6px; }
+.choices input {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.choices label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .12s, color .12s, border-color .12s;
+}
+.choices.yesno label { font-family: var(--font-body); font-weight: 700; font-size: 1rem; }
+.choices label.lit { background: var(--accent-soft); border-color: var(--accent-soft); }
+.choices input:checked + label { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.choices input[value="ja"]:checked + label { background: var(--warm); color: var(--warm-ink); border-color: var(--warm); }
+.choices input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.scale-ends { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); }
+
+/* Opslaan */
+.save { display: flex; flex-direction: column; gap: .75rem; }
+.save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  min-height: 3.5rem;
+  padding-inline: 1rem;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.save-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.save-btn[aria-disabled="true"] { background: var(--line); color: var(--muted); cursor: default; }
+.save-btn svg { width: 1.25rem; height: 1.25rem; flex: none; }
+.hint { margin: 0; color: var(--muted); font-size: .9rem; }
+.hint.nudge { color: var(--warm); }
+.chip {
+  align-self: flex-start;
+  font-size: .82rem;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.status {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+}
+.status p { margin: 0; }
+.status .title { font-weight: 700; }
+.line-box {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  white-space: nowrap;
+  overflow-x: auto;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: .5rem .6rem;
+  user-select: all;
+  -webkit-user-select: all;
+}
+.small { font-size: .88rem; color: var(--muted); }
+.btn-quiet {
+  align-self: flex-start;
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: .35rem .75rem;
+  cursor: pointer;
+}
+.btn-quiet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Geschiedenis */
+.section-label {
+  margin: 0 0 .5rem;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .9rem; }
+th, td { text-align: left; padding: .45rem .5rem .45rem 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: .75rem; font-weight: 700; color: var(--muted); }
+td.num, th.num { text-align: right; padding-right: .25rem; }
+td.mono { font-family: var(--font-mono); font-size: .82rem; }
+.empty { margin: 0; color: var(--muted); font-size: .9rem; }
+
+/* Instellen */
+details.setup {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: .9rem 1rem;
+}
+details.setup summary { cursor: pointer; font-weight: 700; }
+details.setup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+details.setup ol { margin: .8rem 0 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .55rem; }
+details.setup p { margin: .8rem 0 0; }
+code { font-family: var(--font-mono); font-size: .88em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .choices label { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <p class="eyebrow" id="dayLabel">Dagscore · vandaag</p>
+    <h1 id="dayTitle">vandaag</h1>
+    <div class="date-row">
+      <label for="date">Andere dag invullen?</label>
+      <input type="date" id="date">
+    </div>
+  </header>
+
+  <form class="questions" id="form" autocomplete="off"></form>
+
+  <section class="save" aria-live="polite">
+    <span class="chip" id="already" hidden></span>
+    <a class="save-btn" id="saveBtn" role="link" tabindex="0" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9H7z" fill="none"/><path d="M12 11v6"/><path d="M9.5 13.5 12 11l2.5 2.5"/></svg>
+      <span>Opslaan in iCloud</span>
+    </a>
+    <p class="hint" id="hint">Vul alle vier de vragen in.</p>
+
+    <div class="status" id="status" hidden>
+      <p class="title" id="statusTitle">Verstuurd naar de opdracht “Scores opslaan”</p>
+      <div class="line-box" id="lineBox"></div>
+      <p class="small">Opent Opdrachten niet vanzelf? Start dan zelf de opdracht <strong>Scores opslaan</strong>. De regel staat op je klembord en de opdracht pakt hem daar op.</p>
+      <button type="button" class="btn-quiet" id="copyBtn">Kopieer regel</button>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-label">Verstuurd vanaf dit apparaat</h2>
+    <div id="history"></div>
+  </section>
+
+  <details class="setup" id="setup">
+    <summary>Eenmalig instellen: de opdracht “Scores opslaan”</summary>
+    <ol>
+      <li>Open de app <strong>Opdrachten</strong> en tik op <strong>+</strong>. Noem de opdracht precies <strong>Scores opslaan</strong>.</li>
+      <li>Voeg de actie <strong>Voeg toe aan tekstbestand</strong> toe. Er staat dan “Achtervoegen Klembord aan Shortcuts”.</li>
+      <li>Tik op <strong>Klembord</strong> en kies <strong>Invoer opdracht</strong>. Bovenaan verschijnt een blok “Ontvang … invoer”. Zet daar <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
+      <li>Tik op <strong>Shortcuts</strong> en kies het bestand iCloud Drive › Apps › Scores › <code>Scores.csv</code>. Zet onder het pijltje (›) rechts in de actie <strong>Maak nieuwe regel</strong> aan.</li>
+      <li>Tik op <strong>Gereed</strong>. De eerste keer vraagt iOS of de opdracht het bestand mag gebruiken. Kies <strong>Sta altijd toe</strong>.</li>
+    </ol>
+    <p class="small">Het bestand staat in iCloud Drive › Apps › Scores › <code>Scores.csv</code> en opent in Numbers of Excel. Elke dag is één regel: <code>Datum;Tijd;Happyness;Ziek;Energie;Levenscontentheid</code>. De opdracht komt via iCloud ook op je Mac, dus de knop werkt daar ook. Namen van knoppen kunnen per iOS-versie iets verschillen.</p>
+  </details>
+</main>
+
+<script>
+(function () {
+  const SHORTCUT = 'Scores opslaan';
+  const STORE_KEY = 'dagscore.verstuurd.v1';
+  const QUESTIONS = [
+    { id: 'happyness',         label: 'Happyness?',         short: 'Happy',   type: 'scale', max: 10, low: 'heel laag', high: 'heel hoog' },
+    { id: 'ziek',              label: 'Ziek?',              short: 'Ziek',    type: 'scale', max: 5,  low: 'niet ziek', high: 'heel ziek' },
+    { id: 'energie',           label: 'Energie?',           short: 'Energie', type: 'scale', max: 10, low: 'heel laag', high: 'heel hoog' },
+    { id: 'levenscontentheid', label: 'Levenscontentheid?', short: 'Leven',   type: 'scale', max: 10, low: 'heel laag', high: 'heel hoog' },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const form = $('form'), dateInput = $('date'), saveBtn = $('saveBtn'), hint = $('hint');
+  const statusBox = $('status'), lineBox = $('lineBox'), already = $('already');
+  let dateTouched = false;
+  let lastLine = '';
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const todayISO = () => isoOf(new Date());
+  const nowTime = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const parseISO = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+  const prettyDay = (iso, opts) => parseISO(iso).toLocaleDateString('nl-NL', opts || { weekday: 'long', day: 'numeric', month: 'long' });
+
+  function loadHistory() {
+    try {
+      const v = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function saveHistory(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* opslag niet beschikbaar */ }
+  }
+
+  // Vragen opbouwen
+  for (const q of QUESTIONS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'q';
+    const head = document.createElement('div');
+    head.className = 'q-head';
+    head.innerHTML = `<h2 class="q-title" id="t-${q.id}">${q.label}</h2><span class="q-value" id="v-${q.id}">—</span>`;
+    const group = document.createElement('div');
+    group.className = 'choices ' + q.type;
+    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('aria-labelledby', 't-' + q.id);
+    if (q.type === 'scale') group.style.gridTemplateColumns = `repeat(${q.max}, minmax(0, 1fr))`;
+    const options = q.type === 'scale'
+      ? Array.from({ length: q.max }, (_, i) => ({ value: String(i + 1), text: String(i + 1) }))
+      : [{ value: 'nee', text: 'Nee' }, { value: 'ja', text: 'Ja' }];
+    for (const o of options) {
+      const id = `${q.id}-${o.value}`;
+      group.insertAdjacentHTML('beforeend',
+        `<input type="radio" name="${q.id}" id="${id}" value="${o.value}"><label for="${id}">${o.text}</label>`);
+    }
+    wrap.append(head, group);
+    if (q.type === 'scale') {
+      const ends = document.createElement('div');
+      ends.className = 'scale-ends';
+      ends.innerHTML = `<span>1 · ${q.low}</span><span>${q.max} · ${q.high}</span>`;
+      wrap.append(ends);
+    }
+    form.append(wrap);
+  }
+
+  function answers() {
+    const out = {};
+    for (const q of QUESTIONS) {
+      const el = form.querySelector(`input[name="${q.id}"]:checked`);
+      out[q.id] = el ? el.value : null;
+    }
+    return out;
+  }
+  const missingOf = (a) => QUESTIONS.filter((q) => a[q.id] == null);
+  const buildLine = (a, time) => [dateInput.value, time, ...QUESTIONS.map((q) => a[q.id])].join(';');
+  const shortcutURL = (line) =>
+    `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}&input=text&text=${encodeURIComponent(line)}`;
+
+  function renderDay() {
+    const iso = dateInput.value || todayISO();
+    const t = todayISO();
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const rel = iso === t ? 'vandaag' : iso === isoOf(y) ? 'gisteren' : 'andere dag';
+    $('dayLabel').textContent = 'Dagscore · ' + rel;
+    $('dayTitle').textContent = prettyDay(iso);
+    const hit = loadHistory().find((h) => h.date === iso);
+    if (hit) {
+      already.textContent = `Voor deze dag al verstuurd om ${hit.time}. Nog een keer opslaan voegt een extra regel toe.`;
+      already.hidden = false;
+    } else {
+      already.hidden = true;
+    }
+  }
+
+  function update() {
+    const a = answers();
+    for (const q of QUESTIONS) {
+      const val = a[q.id];
+      const out = $('v-' + q.id);
+      if (val == null) out.textContent = '—';
+      else out.innerHTML = q.type === 'scale' ? `<strong>${val}</strong> / ${q.max}` : `<strong>${val}</strong>`;
+      if (q.type === 'scale') {
+        form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
+          inp.nextElementSibling.classList.toggle('lit', val != null && Number(inp.value) < Number(val));
+        });
+      }
+    }
+    const missing = missingOf(a);
+    hint.classList.remove('nudge');
+    if (missing.length) {
+      saveBtn.setAttribute('aria-disabled', 'true');
+      saveBtn.removeAttribute('href');
+      hint.textContent = missing.length === QUESTIONS.length
+        ? 'Vul alle vier de vragen in.'
+        : 'Nog invullen: ' + missing.map((q) => q.label.replace('?', '')).join(', ') + '.';
+    } else {
+      saveBtn.removeAttribute('aria-disabled');
+      saveBtn.href = shortcutURL(buildLine(a, nowTime()));
+      hint.textContent = 'Opent de opdracht “Scores opslaan”, die de regel toevoegt aan Scores.csv in iCloud Drive › Apps › Scores.';
+    }
+  }
+
+  function copy(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(() => true, () => false);
+      }
+    } catch (e) { /* valt terug op selecteren */ }
+    return Promise.resolve(false);
+  }
+  function selectLine() {
+    const r = document.createRange();
+    r.selectNodeContents(lineBox);
+    const s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+
+  function renderHistory() {
+    const list = loadHistory();
+    const box = $('history');
+    if (!list.length) {
+      box.innerHTML = '<p class="empty">Nog niets verstuurd vanaf dit apparaat. Je laatste inzendingen verschijnen hier, zodat je ziet of je vandaag al hebt ingevuld.</p>';
+      return;
+    }
+    const rows = list.slice(0, 7).map((h) => `
+      <tr>
+        <td>${prettyDay(h.date, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+        <td class="mono">${h.time}</td>
+        ${QUESTIONS.map((q) => `<td class="num">${h.values[q.id] ?? ''}</td>`).join('')}
+      </tr>`).join('');
+    box.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Dag</th><th>Tijd</th>${QUESTIONS.map((q) => `<th class="num">${q.short}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+
+  saveBtn.addEventListener('click', (e) => {
+    const a = answers();
+    if (missingOf(a).length) {
+      e.preventDefault();
+      hint.classList.add('nudge');
+      return;
+    }
+    const time = nowTime();
+    const line = buildLine(a, time);
+    saveBtn.href = shortcutURL(line); // actueel tijdstip; de navigatie zelf gaat gewoon door
+    lastLine = line;
+    lineBox.textContent = line;
+    statusBox.hidden = false;
+    $('copyBtn').textContent = 'Kopieer regel';
+    copy(line);
+    const list = loadHistory();
+    list.unshift({ date: dateInput.value, time, values: a, line, at: Date.now() });
+    saveHistory(list);
+    renderHistory();
+    renderDay();
+  });
+  saveBtn.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && saveBtn.getAttribute('aria-disabled') === 'true') {
+      e.preventDefault();
+      hint.classList.add('nudge');
+    }
+  });
+
+  $('copyBtn').addEventListener('click', () => {
+    if (!lastLine) return;
+    copy(lastLine).then((ok) => {
+      if (ok) { $('copyBtn').textContent = 'Gekopieerd'; }
+      else { selectLine(); $('copyBtn').textContent = 'Geselecteerd, kopieer handmatig'; }
+    });
+  });
+
+  form.addEventListener('change', update);
+  dateInput.addEventListener('change', () => {
+    dateTouched = true;
+    if (!dateInput.value) dateInput.value = todayISO();
+    renderDay();
+    update();
+  });
+
+  // Na middernacht schuift de datum mee, tenzij je zelf een dag hebt gekozen
+  function refreshDay() {
+    dateInput.max = todayISO();
+    if (!dateTouched && dateInput.value !== todayISO()) {
+      dateInput.value = todayISO();
+      renderDay();
+    }
+    update();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDay(); });
+  setInterval(refreshDay, 30000);
+
+  dateInput.value = todayISO();
+  dateInput.max = todayISO();
+  renderDay();
+  renderHistory();
+  update();
+  if (!loadHistory().length) $('setup').open = true;
+})();
+</script>
+</body>
+</html>
