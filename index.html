@@ -277,6 +277,8 @@ details.setup summary { cursor: pointer; font-weight: 700; }
 details.setup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 details.setup ol { margin: .8rem 0 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .55rem; }
 details.setup p { margin: .8rem 0 0; }
+details.setup .regex { display: flex; flex-direction: column; gap: .5rem; margin-top: .9rem; }
+details.setup .regex p { margin: 0; }
 code { font-family: var(--font-mono); font-size: .88em; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -320,14 +322,20 @@ code { font-family: var(--font-mono); font-size: .88em; }
   </section>
 
   <details class="setup" id="setup">
-    <summary>Eenmalig instellen: de opdracht “Scores opslaan”</summary>
+    <summary>Instellen: de opdracht “Scores opslaan”</summary>
+    <p class="small">De opdracht zet je regel in Scores.csv en haalt oudere regels van dezelfde datum weg. Zo blijft er per datum één regel over.</p>
     <ol>
-      <li>Open de app <strong>Opdrachten</strong> en tik op <strong>+</strong>. Noem de opdracht precies <strong>Scores opslaan</strong>.</li>
-      <li>Voeg de actie <strong>Voeg toe aan tekstbestand</strong> toe. Er staat dan “Achtervoegen Klembord aan Shortcuts”.</li>
-      <li>Tik op <strong>Klembord</strong> en kies <strong>Invoer opdracht</strong>. Bovenaan verschijnt een blok “Ontvang … invoer”. Zet daar <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
-      <li>Tik op <strong>Shortcuts</strong> en kies het bestand iCloud Drive › Apps › Scores › <code>Scores.csv</code>. Zet onder het pijltje (›) rechts in de actie <strong>Maak nieuwe regel</strong> aan.</li>
-      <li>Tik op <strong>Gereed</strong>. De eerste keer vraagt iOS of de opdracht het bestand mag gebruiken. Kies <strong>Sta altijd toe</strong>.</li>
+      <li>Open in <strong>Opdrachten</strong> de opdracht <strong>Scores opslaan</strong>. Verwijder de actie “Achtervoegen … aan Scores.csv”. Laat het blok “Ontvang … invoer” bovenaan staan, met <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
+      <li>Voeg de actie <strong>Bestand</strong> toe, tik op <strong>Bestand</strong> en kies iCloud Drive › Apps › Scores › <code>Scores.csv</code>.</li>
+      <li>Voeg de actie <strong>Tekst</strong> toe. Zet erin: de variabele <strong>Bestand</strong>, dan Return voor een nieuwe regel, dan de variabele <strong>Invoer opdracht</strong>.</li>
+      <li>Voeg <strong>Vervang tekst</strong> toe. Plak in het zoekveld de zoekregel hieronder en maak het vervangveld leeg. Zet onder het pijltje (›) <strong>Reguliere expressie</strong> aan. Achter “in” moet <strong>Tekst</strong> staan.</li>
+      <li>Voeg <strong>Bewaar bestand</strong> toe; daarin moet <strong>Bijgewerkte tekst</strong> staan. Zet onder het pijltje <strong>Vraag waar te bewaren</strong> uit, kies als map Apps › Scores, vul als subpad <code>Scores.csv</code> in en zet <strong>Overschrijf</strong> aan.</li>
     </ol>
+    <div class="regex">
+      <p class="small">Zoekregel voor Vervang tekst:</p>
+      <div class="line-box" id="regexBox">\n(?:(?!\d{4}-\d{2}-\d{2};)[^\n]*|(\d{4}-\d{2}-\d{2});[^\n]*(?=[\s\S]*\n\1;))</div>
+      <button type="button" class="btn-quiet" id="copyRegex">Kopieer zoekregel</button>
+    </div>
     <p class="small">Het bestand staat in iCloud Drive › Apps › Scores › <code>Scores.csv</code> en opent in Numbers of Excel. Elke dag is één regel: <code>Datum;Tijd;Happyness;Ziek;Energie;Levenscontentheid</code>. De opdracht komt via iCloud ook op je Mac, dus de knop werkt daar ook. Namen van knoppen kunnen per iOS-versie iets verschillen.</p>
   </details>
 </main>
@@ -418,7 +426,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     $('dayTitle').textContent = prettyDay(iso);
     const hit = loadHistory().find((h) => h.date === iso);
     if (hit) {
-      already.textContent = `Voor deze dag al verstuurd om ${hit.time}. Nog een keer opslaan voegt een extra regel toe.`;
+      already.textContent = `Voor deze dag al verstuurd om ${hit.time}. Nog een keer opslaan vervangt de regel van die dag.`;
       already.hidden = false;
     } else {
       already.hidden = true;
@@ -449,7 +457,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     } else {
       saveBtn.removeAttribute('aria-disabled');
       saveBtn.href = shortcutURL(buildLine(a, nowTime()));
-      hint.textContent = 'Opent de opdracht “Scores opslaan”, die de regel toevoegt aan Scores.csv in iCloud Drive › Apps › Scores.';
+      hint.textContent = 'Opent de opdracht “Scores opslaan”, die de regel voor deze dag in Scores.csv zet (iCloud Drive › Apps › Scores).';
     }
   }
 
@@ -461,9 +469,9 @@ code { font-family: var(--font-mono); font-size: .88em; }
     } catch (e) { /* valt terug op selecteren */ }
     return Promise.resolve(false);
   }
-  function selectLine() {
+  function selectText(el) {
     const r = document.createRange();
-    r.selectNodeContents(lineBox);
+    r.selectNodeContents(el);
     const s = window.getSelection();
     s.removeAllRanges();
     s.addRange(r);
@@ -519,7 +527,13 @@ code { font-family: var(--font-mono); font-size: .88em; }
     if (!lastLine) return;
     copy(lastLine).then((ok) => {
       if (ok) { $('copyBtn').textContent = 'Gekopieerd'; }
-      else { selectLine(); $('copyBtn').textContent = 'Geselecteerd, kopieer handmatig'; }
+      else { selectText(lineBox); $('copyBtn').textContent = 'Geselecteerd, kopieer handmatig'; }
+    });
+  });
+  $('copyRegex').addEventListener('click', () => {
+    copy($('regexBox').textContent).then((ok) => {
+      if (ok) { $('copyRegex').textContent = 'Gekopieerd'; }
+      else { selectText($('regexBox')); $('copyRegex').textContent = 'Geselecteerd, kopieer handmatig'; }
     });
   });
 
