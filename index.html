@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="0429385a2c">
+<meta name="dagscore-versie" content="245d4441e6">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -306,12 +306,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9H7z" fill="none"/><path d="M12 11v6"/><path d="M9.5 13.5 12 11l2.5 2.5"/></svg>
       <span id="saveLabel">Opslaan in iCloud</span>
     </a>
-    <p class="hint" id="hint">Vul alle vier de vragen in.</p>
+    <p class="hint" id="hint">Vul alle vragen in.</p>
 
     <div class="status" id="status" hidden>
-      <p class="title" id="statusTitle">Verstuurd naar de opdracht “Dagscore opslaan”</p>
+      <p class="title" id="statusTitle">Verstuurd naar de opdracht “<span data-app="shortcut">Dagscore opslaan</span>”</p>
       <div class="line-box" id="lineBox"></div>
-      <p class="small">Opent Opdrachten niet vanzelf? Start dan zelf de opdracht <strong>Dagscore opslaan</strong>. De regel staat op je klembord en de opdracht pakt hem daar op.</p>
+      <p class="small">Opent Opdrachten niet vanzelf? Start dan zelf de opdracht <strong data-app="shortcut">Dagscore opslaan</strong>. De regel staat op je klembord en de opdracht pakt hem daar op.</p>
       <button type="button" class="btn-quiet" id="copyBtn">Kopieer regel</button>
     </div>
   </section>
@@ -322,35 +322,50 @@ code { font-family: var(--font-mono); font-size: .88em; }
   </section>
 
   <details class="setup" id="setup">
-    <summary>Instellen: de opdracht “Dagscore opslaan”</summary>
-    <p class="small">De opdracht zet je regel in Scores.csv en haalt oudere regels van dezelfde datum weg. Zo blijft er per datum één regel over.</p>
+    <summary>Instellen: de opdracht “<span data-app="shortcut">Dagscore opslaan</span>”</summary>
+    <p class="small">De opdracht zet je regel in <span data-app="file">Scores.csv</span> en haalt oudere regels van dezelfde datum weg. Zo blijft er per datum één regel over.</p>
     <ol>
-      <li>Maak in <strong>Opdrachten</strong> een opdracht met de naam <strong>Dagscore opslaan</strong>. Zet bovenaan bij “Ontvang … invoer” <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
-      <li>Voeg <strong>Haal bestand op</strong> toe. Zet <strong>Toon documentkiezer</strong> uit, kies de map iCloud Drive › Apps › Scores en vul als pad <code>Scores.csv</code> in.</li>
+      <li>Maak in <strong>Opdrachten</strong> een opdracht met de naam <strong data-app="shortcut">Dagscore opslaan</strong>. Zet bovenaan bij “Ontvang … invoer” <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
+      <li>Voeg <strong>Haal bestand op</strong> toe. Zet <strong>Toon documentkiezer</strong> uit, kies de map iCloud Drive › Apps › Scores en vul als pad <code data-app="file">Scores.csv</code> in.</li>
       <li>Voeg de actie <strong>Tekst</strong> toe. Zet erin: de variabele <strong>Bestand</strong>, dan Return voor een nieuwe regel, dan de variabele <strong>Invoer opdracht</strong>.</li>
       <li>Voeg <strong>Vervang tekst</strong> toe. Plak in het zoekveld de zoekregel hieronder en maak het vervangveld leeg. Zet onder het pijltje (›) <strong>Reguliere expressie</strong> aan. Achter “in” moet <strong>Tekst</strong> staan.</li>
-      <li>Voeg <strong>Wijzig naam</strong> toe met <strong>Bijgewerkte tekst</strong> en als naam <code>Scores.csv</code>. Zonder deze stap maakt Opdrachten er een .txt-bestand van.</li>
-      <li>Voeg <strong>Bewaar bestand</strong> toe met de uitkomst van <strong>Wijzig naam</strong>. Zet onder het pijltje <strong>Vraag waar te bewaren</strong> uit, kies als map Apps › Scores, vul als subpad <code>Scores.csv</code> in en zet <strong>Overschrijf</strong> aan.</li>
+      <li>Voeg <strong>Wijzig naam</strong> toe met <strong>Bijgewerkte tekst</strong> en als naam <code data-app="file">Scores.csv</code>. Zonder deze stap maakt Opdrachten er een .txt-bestand van.</li>
+      <li>Voeg <strong>Bewaar bestand</strong> toe met de uitkomst van <strong>Wijzig naam</strong>. Zet onder het pijltje <strong>Vraag waar te bewaren</strong> uit, kies als map Apps › Scores, vul als subpad <code data-app="file">Scores.csv</code> in en zet <strong>Overschrijf</strong> aan.</li>
     </ol>
     <div class="regex">
       <p class="small">Zoekregel voor Vervang tekst:</p>
       <div class="line-box" id="regexBox">\n(?:(?!\d{4}-\d{2}-\d{2};)[^\n]*|(\d{4}-\d{2}-\d{2});[^\n]*(?=[\s\S]*\n\1;))</div>
       <button type="button" class="btn-quiet" id="copyRegex">Kopieer zoekregel</button>
     </div>
-    <p class="small">Het bestand staat in iCloud Drive › Apps › Scores › <code>Scores.csv</code> en opent in Numbers of Excel. Elke dag is één regel: <code>Datum;Tijd;Happyness;Ziek;Energie;Levenscontentheid</code>. De opdracht komt via iCloud ook op je Mac, dus de knop werkt daar ook. Namen van knoppen kunnen per iOS-versie iets verschillen.</p>
+    <p class="small">Het bestand staat in iCloud Drive › Apps › Scores › <code data-app="file">Scores.csv</code> en opent in Numbers of Excel. Elke dag is één regel: <code data-app="header">Datum;Tijd;Happyness;Ziek;Energie;Levenscontentheid</code>. De opdracht synchroniseert via iCloud tussen je iPhone en Mac. Namen van knoppen kunnen per versie iets verschillen.</p>
   </details>
 </main>
 
+<script id="app-config" type="application/json">
+{
+  "name": "Dagscore",
+  "shortcut": "Dagscore opslaan",
+  "file": "Scores.csv",
+  "storeKey": "dagscore.verstuurd.v1",
+  "dayStartsAt": 7,
+  "questions": [
+    { "id": "happyness",         "label": "Happyness?",         "short": "Happy",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
+    { "id": "ziek",              "label": "Ziek?",              "short": "Ziek",    "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "heel ziek" },
+    { "id": "energie",           "label": "Energie?",           "short": "Energie", "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
+    { "id": "levenscontentheid", "label": "Levenscontentheid?", "short": "Leven",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" }
+  ]
+}
+</script>
 <script>
 (function () {
-  const SHORTCUT = 'Dagscore opslaan';
-  const STORE_KEY = 'dagscore.verstuurd.v1';
-  const QUESTIONS = [
-    { id: 'happyness',         label: 'Happyness?',         short: 'Happy',   type: 'scale', min: 1, max: 10, low: 'laag', high: 'hoog' },
-    { id: 'ziek',              label: 'Ziek?',              short: 'Ziek',    type: 'scale', min: 0, max: 3,  low: 'niet', high: 'heel ziek' },
-    { id: 'energie',           label: 'Energie?',           short: 'Energie', type: 'scale', min: 1, max: 10, low: 'laag', high: 'hoog' },
-    { id: 'levenscontentheid', label: 'Levenscontentheid?', short: 'Leven',   type: 'scale', min: 1, max: 10, low: 'laag', high: 'hoog' },
-  ];
+  // Instellingen per app (Dagscore, Werkscore) staan in #app-config
+  const APP = JSON.parse(document.getElementById('app-config').textContent);
+  const SHORTCUT = APP.shortcut;
+  const STORE_KEY = APP.storeKey;
+  const QUESTIONS = APP.questions;
+  const fill = { shortcut: APP.shortcut, file: APP.file,
+    header: ['Datum', 'Tijd', ...QUESTIONS.map((q) => q.label.replace('?', ''))].join(';') };
+  document.querySelectorAll('[data-app]').forEach((el) => { el.textContent = fill[el.dataset.app]; });
 
   const $ = (id) => document.getElementById(id);
   const form = $('form'), dateInput = $('date'), saveBtn = $('saveBtn'), hint = $('hint');
@@ -368,7 +383,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     saveBtn.classList.add('confirm');
     $('saveLabel').textContent = `Toch opslaan (vervangt ${hit.time})`;
     hint.classList.remove('nudge');
-    hint.textContent = 'Tik nog een keer om de regel van deze dag te vervangen.';
+    hint.textContent = 'Druk nog een keer op de knop om de regel van deze dag te vervangen.';
     clearTimeout(armTimer);
     armTimer = setTimeout(() => { disarm(); update(); }, 8000);
   }
@@ -383,7 +398,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
   const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const todayISO = () => isoOf(new Date());
   // Voor 7:00 hoort het invullen nog bij gisteren
-  const DAY_STARTS_AT = 7;
+  const DAY_STARTS_AT = APP.dayStartsAt ?? 7;
   const defaultDayISO = () => {
     const d = new Date();
     if (d.getHours() < DAY_STARTS_AT) d.setDate(d.getDate() - 1);
@@ -447,7 +462,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     const t = todayISO();
     const y = new Date(); y.setDate(y.getDate() - 1);
     const rel = iso === t ? 'vandaag' : iso === isoOf(y) ? 'gisteren' : 'andere dag';
-    $('dayLabel').textContent = 'Dagscore · ' + rel;
+    $('dayLabel').textContent = APP.name + ' · ' + rel;
     $('dayTitle').textContent = prettyDay(iso);
     const hit = lastExportFor(iso);
     if (hit) {
@@ -476,12 +491,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
       saveBtn.setAttribute('aria-disabled', 'true');
       saveBtn.removeAttribute('href');
       hint.textContent = missing.length === QUESTIONS.length
-        ? 'Vul alle vier de vragen in.'
+        ? 'Vul alle vragen in.'
         : 'Nog invullen: ' + missing.map((q) => q.label.replace('?', '')).join(', ') + '.';
     } else {
       saveBtn.removeAttribute('aria-disabled');
       saveBtn.href = shortcutURL(buildLine(a, nowTime()));
-      if (!armed) hint.textContent = 'Opent de opdracht “Dagscore opslaan”, die de regel voor deze dag in Scores.csv zet.';
+      if (!armed) hint.textContent = `Opent de opdracht “${APP.shortcut}”, die de regel voor deze dag in ${APP.file} zet.`;
     }
   }
 
