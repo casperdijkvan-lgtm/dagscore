@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="ba96325445">
+<meta name="dagscore-versie" content="2b61bd1f8e">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -458,6 +458,17 @@ code { font-family: var(--font-mono); font-size: .88em; }
   const shortcutURL = (line) =>
     `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}&input=text&text=${encodeURIComponent(line)}`;
 
+  // Scores van de laatste opslag voor deze dag (op dit apparaat) invullen; anders leeg
+  function fillFromHistory() {
+    const hit = lastExportFor(dateInput.value);
+    for (const q of QUESTIONS) {
+      const v = hit ? hit.values[q.id] : null;
+      form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
+        inp.checked = v != null && inp.value === String(v);
+      });
+    }
+  }
+
   function renderDay() {
     const iso = dateInput.value || todayISO();
     const t = todayISO();
@@ -594,6 +605,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     if (window.matchMedia('(pointer: coarse)').matches) dateInput.blur();
     dateTouched = true;
     if (!dateInput.value) dateInput.value = defaultDayISO();
+    fillFromHistory();
     renderDay();
     update();
   });
@@ -603,6 +615,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     dateInput.max = todayISO();
     if (!dateTouched && dateInput.value !== defaultDayISO()) {
       dateInput.value = defaultDayISO();
+      fillFromHistory();
       renderDay();
     }
     update();
@@ -627,6 +640,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
   if (!['casperdijkvan-lgtm.github.io', 'localhost'].includes(location.hostname)) $('moved').hidden = false;
   dateInput.value = defaultDayISO();
   dateInput.max = todayISO();
+  fillFromHistory();
   renderDay();
   renderHistory();
   update();
