@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="d1b6222c03">
+<meta name="dagscore-versie" content="3d2f3d168b">
 <title>Werkscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -601,6 +601,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
 
   form.addEventListener('change', () => { disarm(); update(); });
   dateInput.addEventListener('change', () => {
+    // Op een telefoon de datumkiezer meteen sluiten zodra er een dag is gekozen
+    if (window.matchMedia('(pointer: coarse)').matches) dateInput.blur();
     dateTouched = true;
     if (!dateInput.value) dateInput.value = defaultDayISO();
     renderDay();
