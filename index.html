@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="7877cf0174">
+<meta name="dagscore-versie" content="6a22bc3a7a">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -210,6 +210,13 @@ h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   -webkit-tap-highlight-color: transparent;
 }
 .save-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button.save-btn { width: 100%; border: 0; -webkit-appearance: none; appearance: none; }
+.save-btn[aria-busy="true"] { opacity: .8; cursor: progress; }
+.save-btn.ok { background: var(--ok); color: var(--bg); }
+details.setup .import { margin-top: .8rem; display: flex; flex-direction: column; gap: .5rem; align-items: flex-start; }
+details.setup .import p { margin: 0; }
+label.btn-quiet { display: inline-block; }
+#dbxLogout { margin-top: .8rem; }
 .save-btn[aria-disabled="true"] { background: var(--line); color: var(--muted); cursor: default; }
 .save-btn svg { width: 1.25rem; height: 1.25rem; flex: none; }
 .hint { margin: 0; color: var(--muted); font-size: .9rem; }
@@ -320,60 +327,108 @@ code { font-family: var(--font-mono); font-size: .88em; }
 
   <section class="save" aria-live="polite">
     <p class="warn" id="already" hidden></p>
-    <a class="save-btn" id="saveBtn" role="link" tabindex="0" aria-disabled="true">
+    <button type="button" class="save-btn" id="saveBtn" aria-disabled="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9H7z" fill="none"/><path d="M12 11v6"/><path d="M9.5 13.5 12 11l2.5 2.5"/></svg>
-      <span id="saveLabel">Opslaan in iCloud</span>
-    </a>
+      <span id="saveLabel">Opslaan in Dropbox</span>
+    </button>
     <p class="hint" id="hint">Vul alle vragen in.</p>
-
-    <div class="status" id="status" hidden>
-      <p class="title" id="statusTitle">Verstuurd naar de opdracht “<span data-app="shortcut">Dagscore opslaan</span>”</p>
-      <div class="line-box" id="lineBox"></div>
-      <p class="small">Opent Opdrachten niet vanzelf? Start dan zelf de opdracht <strong data-app="shortcut">Dagscore opslaan</strong>. De regel staat op je klembord en de opdracht pakt hem daar op.</p>
-      <button type="button" class="btn-quiet" id="copyBtn">Kopieer regel</button>
-    </div>
   </section>
 
   <section class="below">
-    <h2 class="section-label">Verstuurd vanaf dit apparaat</h2>
+    <h2 class="section-label" id="historyLabel">Laatste dagen</h2>
     <div id="history"></div>
   </section>
 
   <details class="setup" id="setup">
-    <summary>Instellen: de opdracht “<span data-app="shortcut">Dagscore opslaan</span>”</summary>
-    <p class="small">De opdracht zet je regel in <span data-app="file">Scores.csv</span> en haalt oudere regels van dezelfde datum weg. Zo blijft er per datum één regel over.</p>
-    <ol>
-      <li>Maak in <strong>Opdrachten</strong> een opdracht met de naam <strong data-app="shortcut">Dagscore opslaan</strong>. Zet bovenaan bij “Ontvang … invoer” <strong>Als er geen invoer is</strong> op <strong>Haal klembord op</strong>.</li>
-      <li>Voeg <strong>Haal bestand op</strong> toe. Zet <strong>Toon documentkiezer</strong> uit, kies de map iCloud Drive › Apps › Scores en vul als pad <code data-app="file">Scores.csv</code> in.</li>
-      <li>Voeg de actie <strong>Tekst</strong> toe. Zet erin: de variabele <strong>Bestand</strong>, dan Return voor een nieuwe regel, dan de variabele <strong>Invoer opdracht</strong>.</li>
-      <li>Voeg <strong>Vervang tekst</strong> toe. Plak in het zoekveld de zoekregel hieronder en maak het vervangveld leeg. Zet onder het pijltje (›) <strong>Reguliere expressie</strong> aan. Achter “in” moet <strong>Tekst</strong> staan.</li>
-      <li>Voeg <strong>Wijzig naam</strong> toe met <strong>Bijgewerkte tekst</strong> en als naam <code data-app="file">Scores.csv</code>. Zonder deze stap maakt Opdrachten er een .txt-bestand van.</li>
-      <li>Voeg <strong>Bewaar bestand</strong> toe met de uitkomst van <strong>Wijzig naam</strong>. Zet onder het pijltje <strong>Vraag waar te bewaren</strong> uit, kies als map Apps › Scores, vul als subpad <code data-app="file">Scores.csv</code> in en zet <strong>Overschrijf</strong> aan.</li>
-    </ol>
-    <div class="regex">
-      <p class="small">Zoekregel voor Vervang tekst:</p>
-      <div class="line-box" id="regexBox">\n(?:(?!\d{4}-\d{2}-\d{2};)[^\n]*|(\d{4}-\d{2}-\d{2});[^\n]*(?=[\s\S]*\n\1;))</div>
-      <button type="button" class="btn-quiet" id="copyRegex">Kopieer zoekregel</button>
+    <summary>Opslag: Dropbox</summary>
+    <p class="small" id="dbxState">Nog niet gekoppeld aan Dropbox.</p>
+    <p class="small">Je scores staan in Dropbox › Apps › Scores › <code data-app="file">Scores.csv</code> en openen in Numbers of Excel. Elke dag is één regel, gesorteerd op datum: <code data-app="header">Datum;Tijd</code>. Sla je een dag opnieuw op, dan vervangt de app de regel van die dag.</p>
+    <p class="small">De app kan alleen bij zijn eigen map Apps › Scores, niet bij de rest van je Dropbox. Je logt per apparaat één keer in.</p>
+    <div class="import" id="importBox" hidden>
+      <p class="small">Heb je al scores in een ander bestand, zoals je oude <span data-app="file">Scores.csv</span> uit iCloud Drive? Importeer het één keer; de dagen worden samengevoegd met wat al in Dropbox staat.</p>
+      <label class="btn-quiet" for="importFile">Bestaand CSV-bestand importeren</label>
+      <input type="file" id="importFile" accept=".csv,text/csv,text/plain" hidden>
     </div>
-    <p class="small">Het bestand staat in iCloud Drive › Apps › Scores › <code data-app="file">Scores.csv</code> en opent in Numbers of Excel. Elke dag is één regel: <code data-app="header">Datum;Tijd;Happyness;Ziek;Energie;Levenscontentheid</code>. De opdracht synchroniseert via iCloud tussen je iPhone en Mac. Namen van knoppen kunnen per versie iets verschillen.</p>
+    <button type="button" class="btn-quiet" id="dbxLogout" hidden>Ontkoppel Dropbox op dit apparaat</button>
   </details>
 </main>
 
 <script id="app-config" type="application/json">
 {
   "name": "Dagscore",
-  "shortcut": "Dagscore opslaan",
   "file": "Scores.csv",
   "storeKey": "dagscore.verstuurd.v1",
   "dayStartsAt": 7,
+  "dropboxKey": "erjo5qemoyi1iu4",
   "questions": [
-    { "id": "happyness",         "label": "Happyness?",         "short": "Happy",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
-    { "id": "ziek",              "label": "Ziek?",              "short": "Ziek",    "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "heel ziek", "default": 0 },
-    { "id": "energie",           "label": "Energie?",           "short": "Energie", "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
-    { "id": "levenscontentheid", "label": "Levenscontentheid?", "short": "Leven",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
-    { "id": "privestress",       "label": "Privestress?",       "short": "Stress",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
-    { "id": "alcohol",           "label": "Alcohol?",           "short": "Alcohol",  "type": "scale", "min": 0, "max": 10, "low": "geen", "high": "veel", "default": 0 },
-    { "id": "comment",           "label": "Comment",            "short": "Comment",  "type": "text" }
+    {
+      "id": "happyness",
+      "label": "Happyness?",
+      "short": "Happy",
+      "type": "scale",
+      "min": 1,
+      "max": 10,
+      "low": "laag",
+      "high": "hoog"
+    },
+    {
+      "id": "ziek",
+      "label": "Ziek?",
+      "short": "Ziek",
+      "type": "scale",
+      "min": 0,
+      "max": 3,
+      "low": "niet",
+      "high": "heel ziek",
+      "default": 0
+    },
+    {
+      "id": "energie",
+      "label": "Energie?",
+      "short": "Energie",
+      "type": "scale",
+      "min": 1,
+      "max": 10,
+      "low": "laag",
+      "high": "hoog"
+    },
+    {
+      "id": "levenscontentheid",
+      "label": "Levenscontentheid?",
+      "short": "Leven",
+      "type": "scale",
+      "min": 1,
+      "max": 10,
+      "low": "laag",
+      "high": "hoog"
+    },
+    {
+      "id": "privestress",
+      "label": "Privestress?",
+      "short": "Stress",
+      "type": "scale",
+      "min": 1,
+      "max": 10,
+      "low": "laag",
+      "high": "hoog"
+    },
+    {
+      "id": "alcohol",
+      "label": "Alcohol?",
+      "short": "Alcohol",
+      "type": "scale",
+      "min": 0,
+      "max": 10,
+      "low": "geen",
+      "high": "veel",
+      "default": 0
+    },
+    {
+      "id": "comment",
+      "label": "Comment",
+      "short": "Comment",
+      "type": "text"
+    }
   ]
 }
 </script>
@@ -381,39 +436,21 @@ code { font-family: var(--font-mono); font-size: .88em; }
 (function () {
   // Instellingen per app (Dagscore, Werkscore) staan in #app-config
   const APP = JSON.parse(document.getElementById('app-config').textContent);
-  const SHORTCUT = APP.shortcut;
   const STORE_KEY = APP.storeKey;
   const QUESTIONS = APP.questions;
-  const fill = { shortcut: APP.shortcut, file: APP.file,
-    header: ['Datum', 'Tijd', ...QUESTIONS.map((q) => q.label.replace('?', ''))].join(';') };
+  const colName = (q) => q.label.replace('?', '');
+  const COLUMNS = ['Datum', ...QUESTIONS.map(colName)]; // geen Tijd-kolom meer
+  const TEXT_COLS = new Set(QUESTIONS.filter((q) => q.type === 'text').map(colName));
+  const SCALE_COLS = new Set(QUESTIONS.filter((q) => q.type === 'scale').map(colName));
+  const fill = { file: APP.file, header: COLUMNS.join(';') };
   document.querySelectorAll('[data-app]').forEach((el) => { el.textContent = fill[el.dataset.app]; });
 
   const $ = (id) => document.getElementById(id);
-  const form = $('form'), dateInput = $('date'), saveBtn = $('saveBtn'), hint = $('hint');
-  const statusBox = $('status'), lineBox = $('lineBox'), already = $('already');
-  let dateTouched = false;
-  let lastLine = '';
+  const form = $('form'), dateInput = $('date'), saveBtn = $('saveBtn'), hint = $('hint'), already = $('already');
+  let dateTouched = false, formTouched = false;
   let armed = false, armTimer = null;
-
-  // Laatste export van deze dag op dit apparaat (lijst staat nieuwste eerst)
-  const lastExportFor = (iso) => loadHistory().find((h) => h.date === iso);
-
-  // Eerste tik bij een dag die al is opgeslagen: vraag om bevestiging
-  function arm(hit) {
-    armed = true;
-    saveBtn.classList.add('confirm');
-    $('saveLabel').textContent = `Toch opslaan (vervangt ${hit.time})`;
-    hint.classList.remove('nudge');
-    hint.textContent = 'Druk nog een keer op de knop om de regel van deze dag te vervangen.';
-    clearTimeout(armTimer);
-    armTimer = setTimeout(() => { disarm(); update(); }, 8000);
-  }
-  function disarm() {
-    armed = false;
-    clearTimeout(armTimer);
-    saveBtn.classList.remove('confirm');
-    $('saveLabel').textContent = 'Opslaan in iCloud';
-  }
+  let saving = false, flashing = false, flashTimer = null;
+  let fileRows = null; // Map datum -> { date, time, values } uit Dropbox; null = niet geladen
 
   const pad = (n) => String(n).padStart(2, '0');
   const isoOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -428,7 +465,9 @@ code { font-family: var(--font-mono); font-size: .88em; }
   const nowTime = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const parseISO = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
   const prettyDay = (iso, opts) => parseISO(iso).toLocaleDateString('nl-NL', opts || { weekday: 'long', day: 'numeric', month: 'long' });
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // Lijst van opslagen op dit apparaat: reserve als Dropbox (nog) niet te lezen is
   function loadHistory() {
     try {
       const v = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
@@ -438,15 +477,170 @@ code { font-family: var(--font-mono); font-size: .88em; }
   function saveHistory(list) {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* opslag niet beschikbaar */ }
   }
+  // Laatste opslag voor een dag: uit het Dropbox-bestand als dat geladen is, anders van dit apparaat
+  const lastExportFor = (iso) => (fileRows
+    ? fileRows.get(iso) || null
+    : loadHistory().find((h) => h.date === iso) || null);
 
-  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  // Vrije tekst als CSV-veld: één regel, tussen aanhalingstekens zodat ; geen kolom maakt
-  const csvText = (s) => {
-    const t = String(s ?? '').replace(/[\r\n]+/g, ' ').trim();
-    return t ? '"' + t.replace(/"/g, '""') + '"' : '';
+  // ---------- CSV ----------
+  function parseCSV(text) {
+    const rows = []; let row = [], field = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quoted) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false; }
+        else field += c;
+        continue;
+      }
+      if (c === '"') quoted = true;
+      else if (c === ';') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c !== '\r') field += c;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows.filter((r) => r.some((f) => f.trim() !== ''));
+  }
+  const csvField = (v, alwaysQuote) => {
+    const s = String(v ?? '');
+    return (alwaysQuote && s) || /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
+  // Leest het bestand als { header, rows: [{Kolom: waarde}] }; regels zonder datum vallen weg
+  function readRows(text) {
+    const parsed = parseCSV(String(text || '').replace(/^﻿/, ''));
+    if (!parsed.length) return { header: COLUMNS.slice(), rows: [] };
+    let header = parsed[0].map((h) => h.trim());
+    let body = parsed.slice(1);
+    if (!header.includes('Datum')) { header = COLUMNS.slice(); body = parsed; }
+    const rows = [];
+    for (const r of body) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test((r[0] || '').trim())) continue;
+      const o = {};
+      header.forEach((h, i) => { o[h] = (r[i] ?? '').trim(); });
+      rows.push(o);
+    }
+    return { header, rows };
+  }
+  // Bronnen samenvoegen tot één bestand: één regel per datum (latere bron wint), gesorteerd op datum.
+  // De oude kolom Tijd valt weg; onbekende extra kolommen blijven bewaard.
+  function combineRows(sources) {
+    const extras = [];
+    const byDate = new Map();
+    for (const { header: h, rows } of sources) {
+      for (const col of h) if (col && col !== 'Tijd' && !COLUMNS.includes(col) && !extras.includes(col)) extras.push(col);
+      for (const r of rows) byDate.set(r.Datum, { ...(byDate.get(r.Datum) || {}), ...r });
+    }
+    const header = COLUMNS.concat(extras);
+    const sorted = [...byDate.values()].sort((a, b) => a.Datum.localeCompare(b.Datum));
+    const line = (o) => header.map((h) => {
+      let v = o[h];
+      if (v == null || v === '') v = SCALE_COLS.has(h) ? '0' : '';
+      return csvField(v, TEXT_COLS.has(h));
+    }).join(';');
+    return [header.join(';'), ...sorted.map(line)].join('\n');
+  }
+  const mergeCSV = (text, rowObj) => combineRows([readRows(text), { header: COLUMNS, rows: [rowObj] }]);
+  function toFileRows(text) {
+    const m = new Map();
+    for (const o of readRows(text).rows) {
+      m.set(o.Datum, { date: o.Datum, time: o.Tijd || '',
+        values: Object.fromEntries(QUESTIONS.map((q) => [q.id, o[colName(q)] ?? null])) });
+    }
+    return m;
+  }
 
-  // Vragen opbouwen
+  // ---------- Dropbox (inloggen met PKCE, geen geheim in de app) ----------
+  const DBX_KEY = APP.dropboxKey || '';
+  const DBX_PATH = '/' + APP.file;
+  const AUTH_KEY = 'dropbox.auth.v1'; // gedeeld door Dagscore en Werkscore op dezelfde site
+  const PKCE_KEY = 'dropbox.pkce.v1';
+  const REDIRECT = location.origin + location.pathname;
+  class NeedLogin extends Error {}
+
+  function loadAuth() { try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; } }
+  function saveAuth(a) { try { a ? localStorage.setItem(AUTH_KEY, JSON.stringify(a)) : localStorage.removeItem(AUTH_KEY); } catch (e) { /* */ } }
+  const isLinked = () => !!(DBX_KEY && loadAuth());
+  const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const randomString = (n) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0, n); };
+
+  async function startLogin() {
+    const verifier = randomString(64);
+    const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+    const state = randomString(16);
+    try { localStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, state, redirect: REDIRECT })); } catch (e) { /* */ }
+    const p = new URLSearchParams({ client_id: DBX_KEY, response_type: 'code', code_challenge: challenge,
+      code_challenge_method: 'S256', redirect_uri: REDIRECT, token_access_type: 'offline', state });
+    location.href = 'https://www.dropbox.com/oauth2/authorize?' + p;
+  }
+  async function tokenRequest(params) {
+    const res = await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', body: new URLSearchParams(params) });
+    const body = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, body };
+  }
+  // Terugkomst van Dropbox met ?code=… afhandelen
+  async function finishLogin() {
+    const q = new URLSearchParams(location.search);
+    if (!q.has('code') && !q.has('error')) return false;
+    history.replaceState(null, '', location.pathname);
+    if (q.has('error')) throw new Error(q.get('error_description') || q.get('error'));
+    let pk = null; try { pk = JSON.parse(localStorage.getItem(PKCE_KEY) || 'null'); } catch (e) { /* */ }
+    if (!pk || pk.state !== q.get('state')) throw new Error('de inlogsessie is verlopen. Probeer het opnieuw.');
+    const r = await tokenRequest({ code: q.get('code'), grant_type: 'authorization_code', client_id: DBX_KEY,
+      code_verifier: pk.verifier, redirect_uri: pk.redirect });
+    if (!r.ok) throw new Error(r.body.error_description || ('Dropbox gaf fout ' + r.status));
+    saveAuth({ access: r.body.access_token, refresh: r.body.refresh_token,
+      exp: Date.now() + ((r.body.expires_in || 14400) - 60) * 1000 });
+    try { localStorage.removeItem(PKCE_KEY); } catch (e) { /* */ }
+    return true;
+  }
+  async function accessToken() {
+    const a = loadAuth();
+    if (!a) throw new NeedLogin();
+    if (a.access && a.exp > Date.now()) return a.access;
+    const r = await tokenRequest({ grant_type: 'refresh_token', refresh_token: a.refresh, client_id: DBX_KEY });
+    if (!r.ok) {
+      if (r.status === 400 || r.status === 401) { saveAuth(null); throw new NeedLogin(); }
+      throw new Error('Dropbox is niet bereikbaar.');
+    }
+    a.access = r.body.access_token;
+    a.exp = Date.now() + ((r.body.expires_in || 14400) - 60) * 1000;
+    saveAuth(a);
+    return a.access;
+  }
+  async function dbxCall(url, arg, body) {
+    const headers = { Authorization: 'Bearer ' + await accessToken(), 'Dropbox-API-Arg': JSON.stringify(arg) };
+    if (body !== undefined) headers['Content-Type'] = 'application/octet-stream';
+    let res;
+    try { res = await fetch(url, { method: 'POST', headers, body }); }
+    catch (e) { throw new Error('geen verbinding met Dropbox.'); }
+    if (res.status === 401) { saveAuth(null); throw new NeedLogin(); }
+    return res;
+  }
+  async function dbxDownload() {
+    const res = await dbxCall('https://content.dropboxapi.com/2/files/download', { path: DBX_PATH });
+    if (res.status === 409) {
+      const e = await res.json().catch(() => ({}));
+      if (/not_found/.test(e.error_summary || '')) return { text: null, rev: null };
+      throw new Error('Dropbox: ' + (e.error_summary || 'onbekende fout'));
+    }
+    if (!res.ok) throw new Error('Dropbox gaf fout ' + res.status + '.');
+    let meta = {};
+    try { meta = JSON.parse(res.headers.get('Dropbox-API-Result') || '{}'); } catch (e) { /* */ }
+    return { text: await res.text(), rev: meta.rev || null };
+  }
+  async function dbxUpload(text, rev) {
+    const mode = rev ? { '.tag': 'update', update: rev } : { '.tag': 'add' };
+    const res = await dbxCall('https://content.dropboxapi.com/2/files/upload',
+      { path: DBX_PATH, mode, autorename: false, mute: true }, new TextEncoder().encode(text));
+    if (res.status === 409) {
+      const e = await res.json().catch(() => ({}));
+      if (/conflict/.test(e.error_summary || '')) return 'conflict';
+      throw new Error('Dropbox: ' + (e.error_summary || 'onbekende fout'));
+    }
+    if (!res.ok) throw new Error('Dropbox gaf fout ' + res.status + '.');
+    return 'ok';
+  }
+
+  // ---------- Vragen opbouwen ----------
   for (const q of QUESTIONS) {
     if (q.type === 'text') {
       const wrap = document.createElement('div');
@@ -460,21 +654,18 @@ code { font-family: var(--font-mono); font-size: .88em; }
     wrap.className = 'q';
     const head = document.createElement('div');
     head.className = 'q-head';
-    head.innerHTML = `<h2 class="q-title" id="t-${q.id}">${q.label}</h2>`
-      + (q.type === 'scale' ? `<span class="q-range">${q.min} ${q.low} · ${q.max} ${q.high}</span>` : '');
+    head.innerHTML = `<h2 class="q-title" id="t-${q.id}">${esc(q.label)}</h2>`
+      + `<span class="q-range">${q.min} ${esc(q.low)} · ${q.max} ${esc(q.high)}</span>`;
     const group = document.createElement('div');
-    group.className = 'choices ' + q.type;
+    group.className = 'choices scale';
     group.setAttribute('role', 'radiogroup');
     group.setAttribute('aria-labelledby', 't-' + q.id);
-    const steps = q.type === 'scale' ? q.max - q.min + 1 : 2;
-    if (q.type === 'scale') group.style.gridTemplateColumns = `repeat(${steps}, minmax(0, 1fr))`;
-    const options = q.type === 'scale'
-      ? Array.from({ length: steps }, (_, i) => ({ value: String(q.min + i), text: String(q.min + i) }))
-      : [{ value: 'nee', text: 'Nee' }, { value: 'ja', text: 'Ja' }];
-    for (const o of options) {
-      const id = `${q.id}-${o.value}`;
+    const steps = q.max - q.min + 1;
+    group.style.gridTemplateColumns = `repeat(${steps}, minmax(0, 1fr))`;
+    for (let i = 0; i < steps; i++) {
+      const v = String(q.min + i), id = `${q.id}-${v}`;
       group.insertAdjacentHTML('beforeend',
-        `<input type="radio" name="${q.id}" id="${id}" value="${o.value}"><label for="${id}">${o.text}</label>`);
+        `<input type="radio" name="${q.id}" id="${id}" value="${v}"><label for="${id}">${v}</label>`);
     }
     wrap.append(head, group);
     form.append(wrap);
@@ -490,12 +681,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
     return out;
   }
   const missingOf = (a) => QUESTIONS.filter((q) => q.type !== 'text' && a[q.id] == null);
-  const buildLine = (a, time) => [dateInput.value, time,
-    ...QUESTIONS.map((q) => (q.type === 'text' ? csvText(a[q.id]) : a[q.id]))].join(';');
-  const shortcutURL = (line) =>
-    `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT)}&input=text&text=${encodeURIComponent(line)}`;
 
-  // Scores van de laatste opslag voor deze dag (op dit apparaat) invullen; anders leeg
+  // Scores van de laatste opslag voor deze dag invullen; anders leeg (met standaardwaarden)
   function fillFromHistory() {
     const hit = lastExportFor(dateInput.value);
     for (const q of QUESTIONS) {
@@ -508,16 +695,42 @@ code { font-family: var(--font-mono); font-size: .88em; }
     }
   }
 
+  // ---------- Knop ----------
+  const baseLabel = () => (isLinked() || !DBX_KEY ? 'Opslaan in Dropbox' : 'Koppel Dropbox');
+  const setLabel = (t) => { $('saveLabel').textContent = t; };
+  function flashLabel(text, cls, ms) {
+    flashing = true;
+    clearTimeout(flashTimer);
+    saveBtn.classList.remove('ok', 'confirm');
+    saveBtn.classList.add(cls);
+    setLabel(text);
+    flashTimer = setTimeout(() => { flashing = false; saveBtn.classList.remove(cls); setLabel(baseLabel()); update(); }, ms);
+  }
+  // Eerste druk bij een dag die al is opgeslagen: vraag om bevestiging
+  function arm(hit) {
+    armed = true;
+    saveBtn.classList.add('confirm');
+    setLabel(hit.time ? `Toch opslaan (vervangt ${hit.time})` : 'Toch opslaan (vervangt die regel)');
+    hint.classList.remove('nudge');
+    hint.textContent = 'Druk nog een keer op de knop om de regel van deze dag te vervangen.';
+    clearTimeout(armTimer);
+    armTimer = setTimeout(() => { disarm(); update(); }, 8000);
+  }
+  function disarm() {
+    armed = false;
+    clearTimeout(armTimer);
+    if (!flashing) { saveBtn.classList.remove('confirm'); setLabel(baseLabel()); }
+  }
+
   function renderDay() {
     const iso = dateInput.value || todayISO();
-    const t = todayISO();
     const y = new Date(); y.setDate(y.getDate() - 1);
-    const rel = iso === t ? 'vandaag' : iso === isoOf(y) ? 'gisteren' : 'andere dag';
+    const rel = iso === todayISO() ? 'vandaag' : iso === isoOf(y) ? 'gisteren' : 'andere dag';
     $('dayLabel').textContent = APP.name + ' · ' + rel;
     $('dayTitle').textContent = prettyDay(iso, { weekday: 'short', day: 'numeric', month: 'long' });
     const hit = lastExportFor(iso);
     if (hit) {
-      already.innerHTML = `<strong>Al opgeslagen</strong> om ${hit.time} · opslaan vervangt die regel`;
+      already.innerHTML = `<strong>Al opgeslagen</strong>${hit.time ? ' om ' + esc(hit.time) : ''} · opslaan vervangt die regel`;
       already.hidden = false;
     } else {
       already.hidden = true;
@@ -528,120 +741,171 @@ code { font-family: var(--font-mono); font-size: .88em; }
   function update() {
     const a = answers();
     for (const q of QUESTIONS) {
+      if (q.type !== 'scale') continue;
       const val = a[q.id];
-      if (q.type === 'scale') {
-        form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
-          inp.nextElementSibling.classList.toggle('lit', val != null && Number(inp.value) < Number(val));
-        });
-      }
+      form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
+        inp.nextElementSibling.classList.toggle('lit', val != null && Number(inp.value) < Number(val));
+      });
+    }
+    if (saving) return;
+    hint.classList.remove('nudge');
+    if (!DBX_KEY) {
+      saveBtn.setAttribute('aria-disabled', 'true');
+      hint.textContent = 'Dropbox is nog niet ingesteld in deze app.';
+      return;
+    }
+    if (!isLinked()) {
+      saveBtn.removeAttribute('aria-disabled');
+      if (!flashing) setLabel('Koppel Dropbox');
+      hint.textContent = 'Eenmalig per apparaat: log in bij Dropbox. Daarna slaat deze knop je scores op.';
+      return;
     }
     const missing = missingOf(a);
-    hint.classList.remove('nudge');
     if (missing.length) {
       saveBtn.setAttribute('aria-disabled', 'true');
-      saveBtn.removeAttribute('href');
-      hint.textContent = missing.length === QUESTIONS.length
-        ? 'Vul alle vragen in.'
-        : 'Nog invullen: ' + missing.map((q) => q.label.replace('?', '')).join(', ') + '.';
+      hint.textContent = 'Nog invullen: ' + missing.map(colName).join(', ') + '.';
     } else {
       saveBtn.removeAttribute('aria-disabled');
-      saveBtn.href = shortcutURL(buildLine(a, nowTime()));
-      if (!armed) hint.textContent = `Opent de opdracht “${APP.shortcut}”, die de regel voor deze dag in ${APP.file} zet.`;
+      if (!armed && !flashing) hint.textContent = `Slaat de regel voor deze dag op in Dropbox › Apps › Scores › ${APP.file}.`;
     }
-  }
-
-  function copy(text) {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        return navigator.clipboard.writeText(text).then(() => true, () => false);
-      }
-    } catch (e) { /* valt terug op selecteren */ }
-    return Promise.resolve(false);
-  }
-  function selectText(el) {
-    const r = document.createRange();
-    r.selectNodeContents(el);
-    const s = window.getSelection();
-    s.removeAllRanges();
-    s.addRange(r);
+    if (!armed && !flashing) setLabel(baseLabel());
   }
 
   function renderHistory() {
-    const list = loadHistory();
     const box = $('history');
+    const list = fileRows
+      ? [...fileRows.values()].sort((a, b) => b.date.localeCompare(a.date))
+      : loadHistory();
+    $('historyLabel').textContent = fileRows ? `Laatste dagen in ${APP.file}` : 'Verstuurd vanaf dit apparaat';
     if (!list.length) {
-      box.innerHTML = '<p class="empty">Nog niets verstuurd vanaf dit apparaat. Je laatste inzendingen verschijnen hier, zodat je ziet of je vandaag al hebt ingevuld.</p>';
+      box.innerHTML = `<p class="empty">${fileRows ? 'Er staan nog geen dagen in het bestand.' : 'Nog niets opgeslagen vanaf dit apparaat.'}</p>`;
       return;
     }
     const rows = list.slice(0, 7).map((h) => `
       <tr>
         <td>${prettyDay(h.date, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-        <td class="mono">${h.time}</td>
         ${QUESTIONS.map((q) => (q.type === 'text'
           ? `<td class="note" title="${esc(h.values[q.id])}">${esc(h.values[q.id])}</td>`
-          : `<td class="num">${h.values[q.id] ?? ''}</td>`)).join('')}
+          : `<td class="num">${esc(h.values[q.id])}</td>`)).join('')}
       </tr>`).join('');
     box.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Dag</th><th>Tijd</th>${QUESTIONS.map((q) => `<th class="${q.type === 'text' ? '' : 'num'}">${esc(q.short)}</th>`).join('')}</tr></thead>
+      <thead><tr><th>Dag</th>${QUESTIONS.map((q) => `<th class="${q.type === 'text' ? '' : 'num'}">${esc(q.short)}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   }
 
-  saveBtn.addEventListener('click', (e) => {
+  function updateDbxState() {
+    $('dbxState').textContent = !DBX_KEY ? 'Dropbox is nog niet ingesteld in deze app.'
+      : !isLinked() ? 'Nog niet gekoppeld. Druk op “Koppel Dropbox” om in te loggen.'
+      : fileRows ? `Gekoppeld aan Dropbox. ${fileRows.size} ${fileRows.size === 1 ? 'dag' : 'dagen'} in ${APP.file}.`
+      : 'Gekoppeld aan Dropbox.';
+    $('dbxLogout').hidden = !isLinked();
+    $('importBox').hidden = !isLinked();
+  }
+
+  // Een bestaand CSV-bestand (bv. de oude versie uit iCloud Drive) samenvoegen met het Dropbox-bestand.
+  // Wat al in Dropbox staat, wint bij dezelfde datum.
+  $('importFile').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || !isLinked() || saving) return;
+    saving = true;
+    $('dbxState').textContent = `Bezig met importeren van ${file.name}…`;
+    try {
+      const imported = readRows(await file.text());
+      if (!imported.rows.length) throw new Error('er staan geen dagen in dit bestand.');
+      let text = null;
+      for (let attempt = 1; ; attempt++) {
+        const cur = await dbxDownload();
+        text = combineRows([imported, readRows(cur.text)]);
+        if (await dbxUpload(text, cur.rev) === 'ok') break;
+        if (attempt === 3) throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
+      }
+      fileRows = toFileRows(text);
+      saving = false;
+      if (!formTouched) fillFromHistory();
+      renderDay(); renderHistory(); update(); updateDbxState();
+      $('dbxState').textContent = `Geïmporteerd: ${imported.rows.length} ${imported.rows.length === 1 ? 'dag' : 'dagen'} uit ${file.name}. Nu ${fileRows.size} dagen in ${APP.file}.`;
+    } catch (err) {
+      saving = false;
+      updateDbxState();
+      $('dbxState').textContent = err instanceof NeedLogin
+        ? 'Je Dropbox-koppeling is verlopen. Log opnieuw in en importeer dan nog een keer.'
+        : `Importeren lukte niet: ${err.message || err}`;
+    }
+  });
+
+  // Bestand uit Dropbox lezen voor waarschuwing, eerdere scores en overzicht
+  async function loadFile() {
+    if (!isLinked() || saving) return;
+    try {
+      const cur = await dbxDownload();
+      fileRows = toFileRows(cur.text || '');
+    } catch (err) {
+      if (err instanceof NeedLogin) fileRows = null;
+      // offline of andere fout: de lijst van dit apparaat blijft de reserve
+    }
+    if (!formTouched) fillFromHistory();
+    renderDay(); renderHistory(); update(); updateDbxState();
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    if (saving) return;
+    if (!DBX_KEY) return;
+    if (!isLinked()) { startLogin(); return; }
     const a = answers();
-    if (missingOf(a).length) {
-      e.preventDefault();
-      hint.classList.add('nudge');
-      return;
-    }
+    if (missingOf(a).length) { hint.classList.add('nudge'); return; }
     const hit = lastExportFor(dateInput.value);
-    if (hit && !armed) {
-      e.preventDefault();
-      arm(hit);
-      return;
-    }
-    const time = nowTime();
-    const line = buildLine(a, time);
-    saveBtn.href = shortcutURL(line); // actueel tijdstip; de navigatie zelf gaat gewoon door
-    lastLine = line;
-    copy(line); // moet direct, binnen de klik
-    const list = loadHistory();
-    list.unshift({ date: dateInput.value, time, values: a, line, at: Date.now() });
-    saveHistory(list);
-    // De pagina pas bijwerken als Opdrachten al open is, zodat je de knop niet ziet veranderen
-    setTimeout(() => {
-      disarm();
-      lineBox.textContent = line;
-      statusBox.hidden = false;
-      $('copyBtn').textContent = 'Kopieer regel';
-      renderHistory();
-      renderDay();
-      update();
-    }, 1000);
-  });
-  saveBtn.addEventListener('keydown', (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && saveBtn.getAttribute('aria-disabled') === 'true') {
-      e.preventDefault();
+    if (hit && !armed) { arm(hit); return; }
+    disarm();
+    const date = dateInput.value, time = nowTime();
+    const row = { Datum: date };
+    for (const q of QUESTIONS) row[colName(q)] = a[q.id] ?? '';
+    saving = true;
+    saveBtn.setAttribute('aria-busy', 'true');
+    setLabel('Opslaan…');
+    hint.classList.remove('nudge');
+    hint.textContent = `Bezig met opslaan in Dropbox › Apps › Scores › ${APP.file}…`;
+    try {
+      let text = null;
+      for (let attempt = 1; ; attempt++) {
+        const cur = await dbxDownload();
+        text = mergeCSV(cur.text, row);
+        if (await dbxUpload(text, cur.rev) === 'ok') break;
+        if (attempt === 3) throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
+      }
+      fileRows = toFileRows(text);
+      const list = loadHistory();
+      list.unshift({ date, time, values: a, at: Date.now() });
+      saveHistory(list);
+      saving = false;
+      saveBtn.removeAttribute('aria-busy');
+      renderDay(); renderHistory(); updateDbxState();
+      flashLabel('Opgeslagen ✓', 'ok', 2500);
+      hint.textContent = `Opgeslagen om ${time} in Dropbox › Apps › Scores › ${APP.file}.`;
+    } catch (err) {
+      saving = false;
+      saveBtn.removeAttribute('aria-busy');
+      updateDbxState();
+      if (err instanceof NeedLogin) {
+        update();
+        hint.textContent = 'Je Dropbox-koppeling is verlopen. Druk op de knop om opnieuw in te loggen.';
+        return;
+      }
+      flashLabel('Niet opgeslagen', 'confirm', 4000);
       hint.classList.add('nudge');
+      hint.textContent = `Niet opgeslagen: ${err.message || err} Je keuzes staan er nog; probeer het opnieuw.`;
     }
   });
 
-  $('copyBtn').addEventListener('click', () => {
-    if (!lastLine) return;
-    copy(lastLine).then((ok) => {
-      if (ok) { $('copyBtn').textContent = 'Gekopieerd'; }
-      else { selectText(lineBox); $('copyBtn').textContent = 'Geselecteerd, kopieer handmatig'; }
-    });
-  });
-  $('copyRegex').addEventListener('click', () => {
-    copy($('regexBox').textContent).then((ok) => {
-      if (ok) { $('copyRegex').textContent = 'Gekopieerd'; }
-      else { selectText($('regexBox')); $('copyRegex').textContent = 'Geselecteerd, kopieer handmatig'; }
-    });
+  $('dbxLogout').addEventListener('click', async () => {
+    try { await dbxCall('https://api.dropboxapi.com/2/auth/token/revoke', null); } catch (e) { /* niet erg */ }
+    saveAuth(null);
+    fileRows = null;
+    renderDay(); renderHistory(); update(); updateDbxState();
   });
 
-  form.addEventListener('change', () => { disarm(); update(); });
-  // Tekstveld: link meteen bijwerken; Enter verstuurt het formulier niet
-  form.addEventListener('input', (e) => { if (e.target.type === 'text') { disarm(); update(); } });
+  form.addEventListener('change', () => { formTouched = true; disarm(); update(); });
+  form.addEventListener('input', (e) => { if (e.target.type === 'text') { formTouched = true; disarm(); update(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); document.activeElement?.blur(); });
   // De datumkiezer meteen sluiten zodra er een dag is aangeklikt of aangetikt.
   // Wie de datum typt (Mac), houdt het veld open om verder te typen.
@@ -650,17 +914,19 @@ code { font-family: var(--font-mono); font-size: .88em; }
   dateInput.addEventListener('change', () => {
     if (Date.now() - typedAt > 800) dateInput.blur();
     dateTouched = true;
+    formTouched = false;
     if (!dateInput.value) dateInput.value = defaultDayISO();
     fillFromHistory();
     renderDay();
     update();
   });
 
-  // Na middernacht schuift de datum mee, tenzij je zelf een dag hebt gekozen
+  // Na middernacht (of na 7:00) schuift de datum mee, tenzij je zelf een dag hebt gekozen
   function refreshDay() {
     dateInput.max = todayISO();
     if (!dateTouched && dateInput.value !== defaultDayISO()) {
       dateInput.value = defaultDayISO();
+      formTouched = false;
       fillFromHistory();
       renderDay();
     }
@@ -669,7 +935,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
   // Staat er een nieuwere versie op de site, laad die dan meteen (alleen op de losse site)
   async function checkVersion() {
     const meta = document.querySelector('meta[name="dagscore-versie"]');
-    if (!meta) return;
+    if (!meta || saving) return;
     try {
       const res = await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' });
       const m = (await res.text()).match(/name="dagscore-versie" content="([^"]+)"/);
@@ -679,8 +945,10 @@ code { font-family: var(--font-mono); font-size: .88em; }
       }
     } catch (e) { /* offline: gewoon doorgaan met deze versie */ }
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshDay(); checkVersion(); } });
-  checkVersion();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    refreshDay(); checkVersion(); loadFile();
+  });
   setInterval(refreshDay, 30000);
 
   if (!['casperdijkvan-lgtm.github.io', 'localhost'].includes(location.hostname)) $('moved').hidden = false;
@@ -690,7 +958,26 @@ code { font-family: var(--font-mono); font-size: .88em; }
   renderDay();
   renderHistory();
   update();
-  if (!loadHistory().length) $('setup').open = true;
+  updateDbxState();
+  if (!isLinked()) $('setup').open = true;
+
+  // Terug van het inloggen bij Dropbox? Dan eerst dat afmaken, daarna het bestand lezen.
+  (async () => {
+    let returning = false;
+    try {
+      returning = await finishLogin();
+    } catch (err) {
+      returning = true;
+      hint.classList.add('nudge');
+      hint.textContent = 'Inloggen bij Dropbox lukte niet: ' + (err.message || err);
+    }
+    if (returning) { renderDay(); update(); updateDbxState(); $('setup').open = !isLinked(); }
+    else checkVersion();
+    loadFile();
+  })();
+
+  // Voor tests: alleen de CSV-logica
+  window.__dagscoreCSV = { parseCSV, mergeCSV, combineRows, readRows, toFileRows, COLUMNS };
 })();
 </script>
 </body>
