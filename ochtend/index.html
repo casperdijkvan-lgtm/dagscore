@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="a2609d81d6">
+<meta name="dagscore-versie" content="39d0f4ce92">
 <title>Ochtendscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -626,8 +626,14 @@ code { font-family: var(--font-mono); font-size: .88em; }
   // ---------- Vragen opbouwen ----------
   const THUMB = 28;
   const fmtHalf = (v) => String(v).replace('.', ',');
-  // Weergavevolgorde: een vraag met "after" komt direct na die vraag (de kolomvolgorde in het bestand blijft gelijk)
-  const DISPLAY = QUESTIONS.slice();
+  // Weergavevolgorde: "order" in de instellingen (de kolomvolgorde in het bestand blijft gelijk);
+  // een vraag met "after" komt direct na die vraag
+  let DISPLAY = QUESTIONS.slice();
+  if (Array.isArray(APP.order)) {
+    const byId = new Map(QUESTIONS.map((q) => [q.id, q]));
+    DISPLAY = APP.order.map((id) => byId.get(id)).filter(Boolean);
+    for (const q of QUESTIONS) if (!DISPLAY.includes(q)) DISPLAY.push(q);
+  }
   for (const q of QUESTIONS) {
     if (!q.after) continue;
     DISPLAY.splice(DISPLAY.indexOf(q), 1);
