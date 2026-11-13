@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="4248509ea8">
+<meta name="dagscore-versie" content="ee6fb04bbd">
 <title>Werkscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -445,20 +445,9 @@ code { font-family: var(--font-mono); font-size: .88em; }
   const prettyDay = (iso, opts) => parseISO(iso).toLocaleDateString('nl-NL', opts || { weekday: 'long', day: 'numeric', month: 'long' });
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // Lijst van opslagen op dit apparaat: reserve als Dropbox (nog) niet te lezen is
-  function loadHistory() {
-    try {
-      const v = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-      return Array.isArray(v) ? v : [];
-    } catch (e) { return []; }
-  }
-  function saveHistory(list) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) { /* opslag niet beschikbaar */ }
-  }
-  // Laatste opslag voor een dag: uit het Dropbox-bestand als dat geladen is, anders van dit apparaat
-  const lastExportFor = (iso) => (fileRows
-    ? fileRows.get(iso) || null
-    : loadHistory().find((h) => h.date === iso) || null);
+  // Opgeslagen dagen komen alleen uit Dropbox; de oude lijst op dit apparaat wordt opgeruimd
+  try { localStorage.removeItem(STORE_KEY); } catch (e) { /* */ }
+  const lastExportFor = (iso) => (fileRows ? fileRows.get(iso) || null : null);
 
   // ---------- CSV ----------
   function parseCSV(text) {
@@ -751,12 +740,14 @@ code { font-family: var(--font-mono); font-size: .88em; }
 
   function renderHistory() {
     const box = $('history');
-    const list = fileRows
-      ? [...fileRows.values()].sort((a, b) => b.date.localeCompare(a.date))
-      : loadHistory();
-    $('historyLabel').textContent = fileRows ? `Laatste dagen in ${APP.file}` : 'Verstuurd vanaf dit apparaat';
+    $('historyLabel').textContent = `Laatste dagen in ${APP.file}`;
+    if (!fileRows) {
+      box.innerHTML = `<p class="empty">${isLinked() ? 'Bezig met ophalen uit Dropbox…' : 'Koppel Dropbox om je opgeslagen dagen te zien.'}</p>`;
+      return;
+    }
+    const list = [...fileRows.values()].sort((a, b) => b.date.localeCompare(a.date));
     if (!list.length) {
-      box.innerHTML = `<p class="empty">${fileRows ? 'Er staan nog geen dagen in het bestand.' : 'Nog niets opgeslagen vanaf dit apparaat.'}</p>`;
+      box.innerHTML = '<p class="empty">Er staan nog geen dagen in het bestand.</p>';
       return;
     }
     const rows = list.slice(0, 7).map((h) => `
@@ -832,6 +823,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
     if (!isLinked()) { startLogin(); return; }
     const a = answers();
     if (missingOf(a).length) { hint.classList.add('nudge'); return; }
+    // Bestand nog niet binnen? Eerst ophalen, zodat de waarschuwing voor een al opgeslagen dag klopt
+    if (!fileRows) {
+      setLabel('Bezig…');
+      await loadFile();
+      if (!isLinked()) { update(); return; }
+    }
     const hit = lastExportFor(dateInput.value);
     if (hit && !armed) { arm(hit); return; }
     disarm();
@@ -852,9 +849,6 @@ code { font-family: var(--font-mono); font-size: .88em; }
         if (attempt === 3) throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
       }
       fileRows = toFileRows(text);
-      const list = loadHistory();
-      list.unshift({ date, time, values: a, at: Date.now() });
-      saveHistory(list);
       saving = false;
       saveBtn.removeAttribute('aria-busy');
       renderDay(); renderHistory(); updateDbxState();
