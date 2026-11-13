@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="33bd338103">
+<meta name="dagscore-versie" content="756a611e22">
 <title>Ochtendscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -144,6 +144,16 @@ h1 {
   line-height: 1.2;
 }
 .q-range { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.q-side { display: inline-flex; align-items: center; gap: 8px; }
+.half-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer;
+  border-radius: 999px; padding: 1px 9px; font: 650 12.5px/1.5 var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+.half-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.half-btn:disabled { opacity: .35; cursor: default; }
+.half-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choices label.halfnext { background: linear-gradient(90deg, var(--accent) 50%, var(--surface) 50%); }
 .q-text { padding-block: .35rem .4rem; }
 h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note-input {
@@ -368,7 +378,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
       "min": 1,
       "max": 10,
       "low": "slecht",
-      "high": "goed"
+      "high": "goed",
+      "half": true
     },
     {
       "id": "wakker",
@@ -378,7 +389,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
       "min": 1,
       "max": 10,
       "low": "suf",
-      "high": "fris"
+      "high": "fris",
+      "half": true
     },
     {
       "id": "gevoel",
@@ -606,7 +618,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
     const head = document.createElement('div');
     head.className = 'q-head';
     head.innerHTML = `<h2 class="q-title" id="t-${q.id}">${esc(q.label)}</h2>`
-      + `<span class="q-range">${q.min} ${esc(q.low)} · ${q.max} ${esc(q.high)}</span>`;
+      + `<span class="q-side">${q.half ? `<button type="button" class="half-btn" id="half-${q.id}" aria-pressed="false" aria-label="Half punt erbij">+½</button>` : ''}`
+      + `<span class="q-range">${q.min} ${esc(q.low)} · ${q.max} ${esc(q.high)}</span></span>`;
     const group = document.createElement('div');
     group.className = 'choices scale';
     group.setAttribute('role', 'radiogroup');
@@ -628,10 +641,14 @@ code { font-family: var(--font-mono); font-size: .88em; }
       if (q.type === 'text') { out[q.id] = $(q.id).value.replace(/[\r\n]+/g, ' ').trim(); continue; }
       const el = form.querySelector(`input[name="${q.id}"]:checked`);
       out[q.id] = el ? el.value : null;
+      if (el && halfOn(q) && Number(el.value) < q.max) out[q.id] = String(Number(el.value) + 0.5).replace('.', ',');
     }
     return out;
   }
   const missingOf = (a) => QUESTIONS.filter((q) => q.type !== 'text' && a[q.id] == null);
+  // Getallen met een komma (7,5) of punt (7.5) lezen; halve punten schrijven met een komma
+  const toNum = (v) => (v == null || v === '' ? null : Number(String(v).replace(',', '.')));
+  const halfOn = (q) => !!(q.half && $('half-' + q.id) && $('half-' + q.id).getAttribute('aria-pressed') === 'true');
 
   // Scores van de laatste opslag voor deze dag invullen; anders leeg (met standaardwaarden)
   function fillFromHistory() {
@@ -640,9 +657,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
       let v = hit ? hit.values[q.id] : null;
       if (q.type === 'text') { $(q.id).value = v ?? ''; continue; }
       if (v == null && q.default != null) v = q.default; // standaardwaarde, bv. Ziek 0
+      const n = toNum(v);
+      const base = n == null || isNaN(n) ? null : Math.floor(n);
       form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
-        inp.checked = v != null && inp.value === String(v);
+        inp.checked = base != null && Number(inp.value) === base;
       });
+      if (q.half && $('half-' + q.id)) $('half-' + q.id).setAttribute('aria-pressed', String(n != null && n - base >= 0.5));
     }
   }
 
@@ -693,10 +713,20 @@ code { font-family: var(--font-mono); font-size: .88em; }
     const a = answers();
     for (const q of QUESTIONS) {
       if (q.type !== 'scale') continue;
-      const val = a[q.id];
+      const val = toNum(a[q.id]);
+      const base = val == null ? null : Math.floor(val);
+      const half = val != null && val - base >= 0.5;
       form.querySelectorAll(`input[name="${q.id}"]`).forEach((inp) => {
-        inp.nextElementSibling.classList.toggle('lit', val != null && Number(inp.value) < Number(val));
+        const iv = Number(inp.value);
+        inp.nextElementSibling.classList.toggle('lit', base != null && iv < base);
+        inp.nextElementSibling.classList.toggle('halfnext', half && iv === base + 1);
       });
+      if (q.half && $('half-' + q.id)) {
+        const hb = $('half-' + q.id);
+        const checked = form.querySelector(`input[name="${q.id}"]:checked`);
+        hb.disabled = !!checked && Number(checked.value) >= q.max;
+        if (hb.disabled) hb.setAttribute('aria-pressed', 'false');
+      }
     }
     if (saving) return;
     hint.classList.remove('nudge');
@@ -861,6 +891,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
   });
 
   form.addEventListener('change', () => { formTouched = true; disarm(); update(); });
+  form.addEventListener('click', (e) => {
+    const hb = e.target.closest('.half-btn');
+    if (!hb || hb.disabled) return;
+    hb.setAttribute('aria-pressed', String(hb.getAttribute('aria-pressed') !== 'true'));
+    formTouched = true; disarm(); update();
+  });
   form.addEventListener('input', (e) => { if (e.target.type === 'text') { formTouched = true; disarm(); update(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); document.activeElement?.blur(); });
   // De datumkiezer meteen sluiten zodra er een dag is aangeklikt of aangetikt.
@@ -871,6 +907,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     if (Date.now() - typedAt > 800) dateInput.blur();
     dateTouched = true;
     formTouched = false;
+    if (flashing) { flashing = false; clearTimeout(flashTimer); saveBtn.classList.remove('ok', 'confirm'); }
     if (!dateInput.value) dateInput.value = defaultDayISO();
     fillFromHistory();
     renderDay();
