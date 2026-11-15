@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="4537fcb521">
+<meta name="dagscore-versie" content="70f50cdc3b">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -348,6 +348,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
 </head>
 <body>
 <main class="wrap">
+  <p class="moved" id="notice" role="status" hidden></p>
   <p class="moved" id="moved" hidden>Vanaf hier kan de knop Opdrachten niet openen. Gebruik de app op <a href="https://casperdijkvan-lgtm.github.io/dagscore/">casperdijkvan-lgtm.github.io/dagscore</a>.</p>
   <header class="top">
     <div class="day">
@@ -394,6 +395,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
   "storeKey": "dagscore.verstuurd.v1",
   "dayStartsAt": 7,
   "dropboxKey": "erjo5qemoyi1iu4",
+  "migrations": [
+    {
+      "id": "privestress-0-5",
+      "col": "Privestress"
+    }
+  ],
   "order": [
     "happyness",
     "energie",
@@ -452,10 +459,10 @@ code { font-family: var(--font-mono); font-size: .88em; }
       "label": "Privestress?",
       "short": "Stress",
       "type": "scale",
-      "min": 1,
-      "max": 10,
-      "low": "laag",
-      "high": "hoog"
+      "min": 0,
+      "max": 5,
+      "low": "geen",
+      "high": "veel"
     },
     {
       "id": "alcohol",
@@ -661,8 +668,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
     if (res.status === 401) { saveAuth(null); throw new NeedLogin(); }
     return res;
   }
-  async function dbxDownload() {
-    const res = await dbxCall('https://content.dropboxapi.com/2/files/download', { path: DBX_PATH });
+  async function dbxDownload(path = DBX_PATH) {
+    const res = await dbxCall('https://content.dropboxapi.com/2/files/download', { path });
     if (res.status === 409) {
       const e = await res.json().catch(() => ({}));
       if (/not_found/.test(e.error_summary || '')) return { text: null, rev: null };
@@ -673,10 +680,11 @@ code { font-family: var(--font-mono); font-size: .88em; }
     try { meta = JSON.parse(res.headers.get('Dropbox-API-Result') || '{}'); } catch (e) { /* */ }
     return { text: await res.text(), rev: meta.rev || null };
   }
-  async function dbxUpload(text, rev) {
-    const mode = rev ? { '.tag': 'update', update: rev } : { '.tag': 'add' };
+  // rev: alleen overschrijven als het bestand niet intussen veranderd is; zonder rev: alleen nieuw aanmaken
+  async function dbxUpload(text, rev, path = DBX_PATH, overwrite = false) {
+    const mode = overwrite ? { '.tag': 'overwrite' } : rev ? { '.tag': 'update', update: rev } : { '.tag': 'add' };
     const res = await dbxCall('https://content.dropboxapi.com/2/files/upload',
-      { path: DBX_PATH, mode, autorename: false, mute: true }, new TextEncoder().encode(text));
+      { path, mode, autorename: false, mute: true }, new TextEncoder().encode(text));
     if (res.status === 409) {
       const e = await res.json().catch(() => ({}));
       if (/conflict/.test(e.error_summary || '')) return 'conflict';
@@ -684,6 +692,85 @@ code { font-family: var(--font-mono); font-size: .88em; }
     }
     if (!res.ok) throw new Error('Dropbox gaf fout ' + res.status + '.');
     return 'ok';
+  }
+  async function dbxDelete(path) {
+    try {
+      await fetch('https://api.dropboxapi.com/2/files/delete_v2', { method: 'POST',
+        headers: { Authorization: 'Bearer ' + await accessToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }) });
+    } catch (e) { /* */ }
+  }
+
+  // ---------- Eenmalige omzettingen van het bestand in Dropbox ----------
+  // Een schaal van 1–10 naar 0–5: 5→0, 6→1 … 10→5 (alles onder 5 wordt 0).
+  // Een markeringsbestand in Apps › Scores zorgt dat dit nooit twee keer gebeurt, ook niet op een
+  // ander apparaat. Inhoud: "bezig <rev> <tijd>" tijdens het omzetten, daarna "klaar …".
+  const MIGRATIONS = Array.isArray(APP.migrations) ? APP.migrations : [];
+  const shiftDown = (v) => {
+    const n = toNum(v);
+    if (n == null || !Number.isFinite(n)) return v;
+    return fmtHalf(n >= 5 ? n - 5 : 0);
+  };
+  async function runMigration(m) {
+    const MARK = `/omzetting-${m.id}.txt`;
+    const mk = await dbxDownload(MARK);
+    if (mk.text && /^klaar/.test(mk.text)) return null;
+    let staleRev = null;
+    if (mk.text) {
+      const [, rev, ts] = mk.text.trim().split(/\s+/);
+      if (Date.now() - Number(ts) < 120000) throw new Error('de omzetting loopt al op een ander apparaat.');
+      staleRev = rev; // een eerdere poging is halverwege gestopt
+    }
+    const cur = await dbxDownload();
+    const done = async (msg) => dbxUpload(`klaar ${new Date().toISOString()} ${msg}\n`, null, MARK, true);
+    if (!cur.text) { await done('geen bestand'); return null; }
+    // Is het bestand sinds die halve poging veranderd, dan is de omzetting toen wel gelukt
+    if (staleRev && cur.rev !== staleRev) { await done('eerder omgezet'); return null; }
+    if (await dbxUpload(`bezig ${cur.rev} ${Date.now()}\n`, mk.rev || null, MARK) === 'conflict') {
+      throw new Error('de omzetting loopt al op een ander apparaat.');
+    }
+    try {
+      const backup = `${APP.file.replace(/\.csv$/i, '')}-voor-omzetting-${m.id}.csv`;
+      await dbxUpload(cur.text, null, '/' + backup, true);
+      const data = readRows(cur.text);
+      let n = 0;
+      for (const r of data.rows) {
+        if (r[m.col] == null || r[m.col] === '') continue;
+        const nv = shiftDown(r[m.col]);
+        if (nv !== r[m.col]) n++;
+        r[m.col] = nv;
+      }
+      if (await dbxUpload(combineRows([data]), cur.rev) === 'conflict') {
+        throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
+      }
+      await done(`${n} waarden van ${m.col} omgezet naar 0-5`);
+      return { col: m.col, n, backup };
+    } catch (err) {
+      await dbxDelete(MARK); // volgende keer opnieuw proberen
+      throw err;
+    }
+  }
+  let migrationsP = null;
+  // Belooft dat alle omzettingen klaar zijn; mislukt het, dan volgende keer opnieuw
+  function migrationsReady() {
+    if (!MIGRATIONS.length) return Promise.resolve();
+    if (!migrationsP) {
+      migrationsP = (async () => {
+        for (const m of MIGRATIONS) {
+          const r = await runMigration(m);
+          if (r) showNotice(`${r.col} staat nu op 0–5: ${r.n} ${r.n === 1 ? 'dag' : 'dagen'} omgezet (6→1 … 10→5). `
+            + `Reservekopie: Apps › Scores › ${r.backup}`);
+        }
+      })().catch((err) => { migrationsP = null; throw err; });
+    }
+    return migrationsP;
+  }
+  function showNotice(text) {
+    const el = $('notice');
+    el.textContent = text;
+    el.hidden = false;
+    el.onclick = () => { el.hidden = true; };
+    setTimeout(() => { el.hidden = true; }, 15000);
   }
 
   // ---------- Vragen opbouwen ----------
@@ -937,6 +1024,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     try {
       const imported = readRows(await file.text());
       if (!imported.rows.length) throw new Error('er staan geen dagen in dit bestand.');
+      await migrationsReady();
       let text = null;
       for (let attempt = 1; ; attempt++) {
         const cur = await dbxDownload();
@@ -962,10 +1050,12 @@ code { font-family: var(--font-mono); font-size: .88em; }
   async function loadFile() {
     if (!isLinked() || saving) return;
     try {
+      await migrationsReady();
       const cur = await dbxDownload();
       fileRows = toFileRows(cur.text || '');
     } catch (err) {
       if (err instanceof NeedLogin) fileRows = null;
+      else if (MIGRATIONS.length && !migrationsP) showNotice(`Omzetten naar 0–5 lukte nog niet: ${err.message || err} Probeer het later opnieuw.`);
       // offline of andere fout: de lijst van dit apparaat blijft de reserve
     }
     if (!formTouched) fillFromHistory();
@@ -996,6 +1086,8 @@ code { font-family: var(--font-mono); font-size: .88em; }
     hint.classList.remove('nudge');
     hint.textContent = `Bezig met opslaan in Dropbox › Apps › Scores › ${APP.file}…`;
     try {
+      // Nooit nieuwe 0–5-scores in een nog niet omgezet bestand zetten
+      await migrationsReady();
       let text = null;
       for (let attempt = 1; ; attempt++) {
         const cur = await dbxDownload();
