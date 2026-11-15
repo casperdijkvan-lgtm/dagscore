@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="70f50cdc3b">
+<meta name="dagscore-versie" content="c681273b9d">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -128,11 +128,11 @@ h1 {
 /* Vragen */
 .questions { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .q {
-  padding-block: .3rem .4rem;
+  padding-block: .25rem .35rem;
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: .25rem;
+  gap: .2rem;
   min-width: 0;
 }
 .q-head { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
@@ -205,7 +205,7 @@ h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 2.25rem;
+  height: 2.05rem;
   border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -339,7 +339,7 @@ details.setup ol { margin: .8rem 0 0; padding-left: 1.3rem; display: flex; flex-
 details.setup p { margin: .8rem 0 0; }
 details.setup .regex { display: flex; flex-direction: column; gap: .5rem; margin-top: .9rem; }
 details.setup .regex p { margin: 0; }
-code { font-family: var(--font-mono); font-size: .88em; }
+code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere; }
 
 @media (prefers-reduced-motion: reduce) {
   .choices label { transition: none; }
@@ -409,6 +409,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     "alcohol",
     "ziek",
     "drugs",
+    "test2",
     "comment"
   ],
   "questions": [
@@ -486,6 +487,17 @@ code { font-family: var(--font-mono); font-size: .88em; }
       "high": "veel",
       "default": 0,
       "compact": true
+    },
+    {
+      "id": "test2",
+      "label": "Test2?",
+      "short": "Test2",
+      "type": "scale",
+      "min": 0,
+      "max": 7,
+      "low": "laag",
+      "high": "hoog",
+      "default": 2
     },
     {
       "id": "comment",

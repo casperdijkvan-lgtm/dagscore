@@ -108,11 +108,11 @@ h1 {
 /* Vragen */
 .questions { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .q {
-  padding-block: .3rem .4rem;
+  padding-block: .25rem .35rem;
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: .25rem;
+  gap: .2rem;
   min-width: 0;
 }
 .q-head { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
@@ -185,7 +185,7 @@ h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 2.25rem;
+  height: 2.05rem;
   border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -319,7 +319,7 @@ details.setup ol { margin: .8rem 0 0; padding-left: 1.3rem; display: flex; flex-
 details.setup p { margin: .8rem 0 0; }
 details.setup .regex { display: flex; flex-direction: column; gap: .5rem; margin-top: .9rem; }
 details.setup .regex p { margin: 0; }
-code { font-family: var(--font-mono); font-size: .88em; }
+code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere; }
 
 @media (prefers-reduced-motion: reduce) {
   .choices label { transition: none; }
@@ -375,7 +375,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
   "dayStartsAt": 7,
   "dropboxKey": "",
   "migrations": [{ "id": "privestress-0-5", "col": "Privestress" }],
-  "order": ["happyness", "energie", "privestress", "levenscontentheid", "alcohol", "ziek", "drugs", "comment"],
+  "order": ["happyness", "energie", "privestress", "levenscontentheid", "alcohol", "ziek", "drugs", "test2", "comment"],
   "questions": [
     { "id": "happyness",         "label": "Happyness?",         "short": "Happy",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
     { "id": "ziek",              "label": "Ziek?",              "short": "Ziek",    "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "erg", "default": 0, "compact": true },
@@ -384,6 +384,7 @@ code { font-family: var(--font-mono); font-size: .88em; }
     { "id": "privestress",       "label": "Privestress?",       "short": "Stress",  "type": "scale", "min": 0, "max": 5, "low": "geen", "high": "veel" },
     { "id": "alcohol",           "label": "Alcohol?",           "short": "Alcohol", "type": "scale", "min": 0, "max": 10, "low": "geen", "high": "veel", "default": 0 },
     { "id": "drugs",             "label": "Drugs?",             "short": "Drugs",   "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "veel", "default": 0, "compact": true },
+    { "id": "test2",             "label": "Test2?",             "short": "Test2",   "type": "scale", "min": 0, "max": 7,  "low": "laag", "high": "hoog", "default": 2 },
     { "id": "comment",           "label": "Comment",            "short": "Comment", "type": "text" }
   ]
 }
