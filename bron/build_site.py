@@ -43,9 +43,11 @@ APPS = [
             "storeKey": "werkscore.verstuurd.v1",
             "dayStartsAt": 7,
             # eenmalig: oude Stress-waarden 1–10 omzetten naar 0–5 (zie runMigration in dagscore.html)
-            "migrations": [{"id": "werkstress-0-5", "col": "Stress"}],
+            # en eenmalig: kolom Happyness hernoemen naar Happiness
+            "migrations": [{"id": "werkstress-0-5", "col": "Stress"},
+                           {"id": "werk-happiness-naam", "rename": ["Happyness", "Happiness"]}],
             "questions": [
-                {"id": "happyness", "label": "Happyness?", "short": "Happy", **SCALE_10},
+                {"id": "happiness", "label": "Happiness?", "short": "Happy", **SCALE_10},
                 {"id": "stress", "label": "Stress?", "short": "Stress", "type": "scale", "min": 0, "max": 5, "low": "geen", "high": "veel"},
                 {"id": "unclenched", "label": "Unclenched?", "short": "Unclenched", **SCALE_10},
                 {"id": "workload", "label": "Workload?", "short": "Workload", **SCALE_10},

@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="c493ee00a4">
+<meta name="dagscore-versie" content="d6a275d7b3">
 <title>Ochtendscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -435,6 +435,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   const QUESTIONS = APP.questions;
   const colName = (q) => q.label.replace('?', '');
   const COLUMNS = ['Datum', ...QUESTIONS.map(colName)]; // geen Tijd-kolom meer
+  const RENAMED = Object.fromEntries((APP.migrations || []).filter((m) => m.rename).map((m) => m.rename));
   const TEXT_COLS = new Set(QUESTIONS.filter((q) => q.type === 'text').map(colName));
   const SCALE_COLS = new Set(QUESTIONS.filter((q) => q.type === 'scale').map(colName));
   const fill = { file: APP.file, header: COLUMNS.join(';') };
@@ -493,6 +494,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     const parsed = parseCSV(String(text || '').replace(/^﻿/, ''));
     if (!parsed.length) return { header: COLUMNS.slice(), rows: [] };
     let header = parsed[0].map((h) => h.trim());
+    // Hernoemde kolommen (omzetting { rename }) meteen onder hun nieuwe naam lezen
+    header = header.map((h) => (RENAMED[h] && !header.includes(RENAMED[h]) ? RENAMED[h] : h));
     let body = parsed.slice(1);
     if (!header.includes('Datum')) { header = COLUMNS.slice(); body = parsed; }
     const rows = [];
@@ -635,6 +638,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   // ---------- Eenmalige omzettingen van het bestand in Dropbox ----------
   // { col }: een schaal van 1–10 naar 0–5: 5→0, 6→1 … 10→5 (alles onder 5 wordt 0).
   // { drop }: een kolom helemaal uit het bestand halen.
+  // { rename: [oud, nieuw] }: een kolom hernoemen (readRows leest de oude naam al als de nieuwe).
   // Een markeringsbestand in Apps › Scores zorgt dat dit nooit twee keer gebeurt, ook niet op een
   // ander apparaat. Inhoud: "bezig <rev> <tijd>" tijdens het omzetten, daarna "klaar …".
   const MIGRATIONS = Array.isArray(APP.migrations) ? APP.migrations : [];
@@ -657,6 +661,9 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     const done = async (msg) => dbxUpload(`klaar ${new Date().toISOString()} ${msg}\n`, null, MARK, true);
     if (!cur.text) { await done('geen bestand'); return null; }
     if (m.drop && !readRows(cur.text).header.includes(m.drop)) { await done(`geen kolom ${m.drop}`); return null; }
+    if (m.rename && !(parseCSV(cur.text.replace(/^\uFEFF/, ''))[0] || []).map((h) => h.trim()).includes(m.rename[0])) {
+      await done(`geen kolom ${m.rename[0]}`); return null;
+    }
     // Is het bestand sinds die halve poging veranderd, dan is de omzetting toen wel gelukt
     if (staleRev && cur.rev !== staleRev) { await done('eerder omgezet'); return null; }
     if (await dbxUpload(`bezig ${cur.rev} ${Date.now()}\n`, mk.rev || null, MARK) === 'conflict') {
@@ -668,6 +675,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       const data = readRows(cur.text);
       let n = 0;
       if (m.drop) data.header = data.header.filter((h) => h !== m.drop);
+      else if (m.rename) { /* readRows heeft de kolom al hernoemd */ }
       else for (const r of data.rows) {
         if (r[m.col] == null || r[m.col] === '') continue;
         const nv = shiftDown(r[m.col]);
@@ -677,8 +685,9 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       if (await dbxUpload(combineRows([data]), cur.rev) === 'conflict') {
         throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
       }
-      await done(m.drop ? `kolom ${m.drop} verwijderd` : `${n} waarden van ${m.col} omgezet naar 0-5`);
-      return { col: m.col, drop: m.drop, n, backup };
+      await done(m.drop ? `kolom ${m.drop} verwijderd` : m.rename ? `kolom ${m.rename[0]} hernoemd naar ${m.rename[1]}`
+        : `${n} waarden van ${m.col} omgezet naar 0-5`);
+      return { col: m.col, drop: m.drop, rename: m.rename, n, backup };
     } catch (err) {
       await dbxDelete(MARK); // volgende keer opnieuw proberen
       throw err;
@@ -693,6 +702,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
         for (const m of MIGRATIONS) {
           const r = await runMigration(m);
           if (r) showNotice((r.drop ? `Kolom ${r.drop} is uit ${APP.file} verwijderd. `
+            : r.rename ? `Kolom ${r.rename[0]} heet nu ${r.rename[1]} in ${APP.file}. `
             : `${r.col} staat nu op 0–5: ${r.n} ${r.n === 1 ? 'dag' : 'dagen'} omgezet (6→1 … 10→5). `)
             + `Reservekopie: Apps › Scores › ${r.backup}`);
         }
