@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="4119ac306f">
+<meta name="dagscore-versie" content="1ca0614ece">
 <title>Dagscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -410,6 +410,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     "energie",
     "privestress",
     "levenscontentheid",
+    "vrienden",
+    "robin",
     "alcohol",
     "ziek",
     "drugs",
@@ -490,6 +492,26 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       "high": "veel",
       "default": 0,
       "compact": true
+    },
+    {
+      "id": "vrienden",
+      "label": "Vrienden?",
+      "short": "Vrienden",
+      "type": "scale",
+      "min": 0,
+      "max": 3,
+      "low": "geen",
+      "high": "samen iets leuks"
+    },
+    {
+      "id": "robin",
+      "label": "Robin?",
+      "short": "Robin",
+      "type": "scale",
+      "min": 1,
+      "max": 10,
+      "low": "kortaf",
+      "high": "liefdevol"
     },
     {
       "id": "comment",
