@@ -376,7 +376,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   "dropboxKey": "",
   "migrations": [{ "id": "privestress-0-5", "col": "Privestress" }, { "id": "test2-verwijderen", "drop": "Test2" },
                  { "id": "happiness-naam", "rename": ["Happyness", "Happiness"] }],
-  "order": ["happiness", "energie", "privestress", "levenscontentheid", "alcohol", "ziek", "drugs", "comment"],
+  "order": ["happiness", "energie", "privestress", "levenscontentheid", "vrienden", "robin", "alcohol", "ziek", "drugs", "comment"],
   "questions": [
     { "id": "happiness",         "label": "Happiness?",         "short": "Happy",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
     { "id": "ziek",              "label": "Ziek?",              "short": "Ziek",    "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "erg", "default": 0, "compact": true },
@@ -385,6 +385,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     { "id": "privestress",       "label": "Privestress?",       "short": "Stress",  "type": "scale", "min": 0, "max": 5, "low": "geen", "high": "veel" },
     { "id": "alcohol",           "label": "Alcohol?",           "short": "Alcohol", "type": "scale", "min": 0, "max": 10, "low": "geen", "high": "veel", "default": 0 },
     { "id": "drugs",             "label": "Drugs?",             "short": "Drugs",   "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "veel", "default": 0, "compact": true },
+    { "id": "vrienden",          "label": "Vrienden?",          "short": "Vrienden", "type": "scale", "min": 0, "max": 3, "low": "geen", "high": "samen iets leuks" },
+    { "id": "robin",             "label": "Robin?",             "short": "Robin",   "type": "scale", "min": 1, "max": 10, "low": "kortaf", "high": "liefdevol" },
     { "id": "comment",           "label": "Comment",            "short": "Comment", "type": "text" }
   ]
 }

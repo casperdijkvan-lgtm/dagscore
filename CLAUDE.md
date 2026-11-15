@@ -35,7 +35,8 @@ als die anders is.
 ## Wensen van de gebruiker (belangrijk)
 
 - Alles in het **Nederlands**.
-- **Op één iPhone 14-scherm** (Safari, ca. 390×664) moet alles tot en met de opslaan-knop passen, zonder scrollen.
+- **Scrollen mag** (sinds november 2026, toen Vrienden en Robin erbij kwamen). Houd het wel compact; Werkscore en
+  Ochtendscore passen nog op één iPhone 14-scherm (Safari, ca. 390×664) tot en met de opslaan-knop.
 - **Eén regel per datum**: opnieuw opslaan voor dezelfde dag vervangt die regel (met waarschuwing +
   bevestiging als de dag al is opgeslagen). Bij het kiezen van een datum worden eerdere scores ingevuld.
 - Standaarddatum: vóór 07:00 is het nog gisteren (`dayStartsAt`), behalve Ochtendscore (altijd vandaag).
@@ -44,6 +45,13 @@ als die anders is.
   Comment altijd tussen aanhalingstekens. Kolomvolgorde ligt vast (`COLUMNS`); de weergavevolgorde in de
   app regelt `"order"` in de config.
 - Lege schaalwaarden worden als `0` opgeslagen.
+
+## Vragen in Dagscore
+
+Happiness, Energie, Privestress (0–5), Levenscontentheid, Vrienden (0–3: 0 geen contact, 1 berichtje, 2 gebeld of
+kort gezien, 3 samen iets leuks), Robin (1–10: hoe ik naar Robin was), Alcohol, Ziek, Drugs, Comment. Vrienden en
+Robin hebben bewust geen standaardwaarde: ze moeten elke dag gekozen worden. Oude regels hebben daar `0`;
+het dashboard negeert die (Robin 0 valt buiten 1–10, Vrienden heeft `zero: 'after-first'`).
 
 ## Vraagtypes in de config
 
