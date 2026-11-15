@@ -61,7 +61,8 @@ als die anders is.
 - **Eenmalige omzettingen** (`"migrations"` in de config, `runMigration()` in de bron): zetten oude waarden
   in het Dropbox-bestand om, maken een reservekopie `…-voor-omzetting-<id>.csv` en een markeringsbestand
   `omzetting-<id>.txt` zodat het nooit twee keer gebeurt. Bestaand: `privestress-0-5` (Dagscore) en
-  `werkstress-0-5` (Werkscore): 1–10 → 0–5 (v ≥ 5 → v − 5, anders 0). Verwijder een migratie-id nooit
+  `werkstress-0-5` (Werkscore): 1–10 → 0–5 (v ≥ 5 → v − 5, anders 0). Soort `{ "drop": "Kolom" }` haalt een kolom
+  helemaal uit het bestand: `test2-verwijderen` (Dagscore) haalde de testkolom Test2 weg. Verwijder een migratie-id nooit
   en hergebruik er nooit een.
 
 ## Samenhang met het dashboard

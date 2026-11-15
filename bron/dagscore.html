@@ -108,11 +108,11 @@ h1 {
 /* Vragen */
 .questions { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .q {
-  padding-block: .25rem .35rem;
+  padding-block: .3rem .4rem;
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: .2rem;
+  gap: .25rem;
   min-width: 0;
 }
 .q-head { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
@@ -185,7 +185,7 @@ h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 2.05rem;
+  height: 2.25rem;
   border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -374,8 +374,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   "storeKey": "dagscore.verstuurd.v1",
   "dayStartsAt": 7,
   "dropboxKey": "",
-  "migrations": [{ "id": "privestress-0-5", "col": "Privestress" }],
-  "order": ["happyness", "energie", "privestress", "levenscontentheid", "alcohol", "ziek", "drugs", "test2", "comment"],
+  "migrations": [{ "id": "privestress-0-5", "col": "Privestress" }, { "id": "test2-verwijderen", "drop": "Test2" }],
+  "order": ["happyness", "energie", "privestress", "levenscontentheid", "alcohol", "ziek", "drugs", "comment"],
   "questions": [
     { "id": "happyness",         "label": "Happyness?",         "short": "Happy",   "type": "scale", "min": 1, "max": 10, "low": "laag", "high": "hoog" },
     { "id": "ziek",              "label": "Ziek?",              "short": "Ziek",    "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "erg", "default": 0, "compact": true },
@@ -384,7 +384,6 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     { "id": "privestress",       "label": "Privestress?",       "short": "Stress",  "type": "scale", "min": 0, "max": 5, "low": "geen", "high": "veel" },
     { "id": "alcohol",           "label": "Alcohol?",           "short": "Alcohol", "type": "scale", "min": 0, "max": 10, "low": "geen", "high": "veel", "default": 0 },
     { "id": "drugs",             "label": "Drugs?",             "short": "Drugs",   "type": "scale", "min": 0, "max": 3,  "low": "niet", "high": "veel", "default": 0, "compact": true },
-    { "id": "test2",             "label": "Test2?",             "short": "Test2",   "type": "scale", "min": 0, "max": 7,  "low": "laag", "high": "hoog", "default": 2 },
     { "id": "comment",           "label": "Comment",            "short": "Comment", "type": "text" }
   ]
 }
@@ -595,7 +594,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   }
 
   // ---------- Eenmalige omzettingen van het bestand in Dropbox ----------
-  // Een schaal van 1–10 naar 0–5: 5→0, 6→1 … 10→5 (alles onder 5 wordt 0).
+  // { col }: een schaal van 1–10 naar 0–5: 5→0, 6→1 … 10→5 (alles onder 5 wordt 0).
+  // { drop }: een kolom helemaal uit het bestand halen.
   // Een markeringsbestand in Apps › Scores zorgt dat dit nooit twee keer gebeurt, ook niet op een
   // ander apparaat. Inhoud: "bezig <rev> <tijd>" tijdens het omzetten, daarna "klaar …".
   const MIGRATIONS = Array.isArray(APP.migrations) ? APP.migrations : [];
@@ -617,6 +617,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     const cur = await dbxDownload();
     const done = async (msg) => dbxUpload(`klaar ${new Date().toISOString()} ${msg}\n`, null, MARK, true);
     if (!cur.text) { await done('geen bestand'); return null; }
+    if (m.drop && !readRows(cur.text).header.includes(m.drop)) { await done(`geen kolom ${m.drop}`); return null; }
     // Is het bestand sinds die halve poging veranderd, dan is de omzetting toen wel gelukt
     if (staleRev && cur.rev !== staleRev) { await done('eerder omgezet'); return null; }
     if (await dbxUpload(`bezig ${cur.rev} ${Date.now()}\n`, mk.rev || null, MARK) === 'conflict') {
@@ -627,7 +628,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       await dbxUpload(cur.text, null, '/' + backup, true);
       const data = readRows(cur.text);
       let n = 0;
-      for (const r of data.rows) {
+      if (m.drop) data.header = data.header.filter((h) => h !== m.drop);
+      else for (const r of data.rows) {
         if (r[m.col] == null || r[m.col] === '') continue;
         const nv = shiftDown(r[m.col]);
         if (nv !== r[m.col]) n++;
@@ -636,8 +638,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       if (await dbxUpload(combineRows([data]), cur.rev) === 'conflict') {
         throw new Error('het bestand werd tegelijk ergens anders gewijzigd.');
       }
-      await done(`${n} waarden van ${m.col} omgezet naar 0-5`);
-      return { col: m.col, n, backup };
+      await done(m.drop ? `kolom ${m.drop} verwijderd` : `${n} waarden van ${m.col} omgezet naar 0-5`);
+      return { col: m.col, drop: m.drop, n, backup };
     } catch (err) {
       await dbxDelete(MARK); // volgende keer opnieuw proberen
       throw err;
@@ -651,7 +653,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       migrationsP = (async () => {
         for (const m of MIGRATIONS) {
           const r = await runMigration(m);
-          if (r) showNotice(`${r.col} staat nu op 0–5: ${r.n} ${r.n === 1 ? 'dag' : 'dagen'} omgezet (6→1 … 10→5). `
+          if (r) showNotice((r.drop ? `Kolom ${r.drop} is uit ${APP.file} verwijderd. `
+            : `${r.col} staat nu op 0–5: ${r.n} ${r.n === 1 ? 'dag' : 'dagen'} omgezet (6→1 … 10→5). `)
             + `Reservekopie: Apps › Scores › ${r.backup}`);
         }
       })().catch((err) => { migrationsP = null; throw err; });
@@ -948,7 +951,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       fileRows = toFileRows(cur.text || '');
     } catch (err) {
       if (err instanceof NeedLogin) fileRows = null;
-      else if (MIGRATIONS.length && !migrationsP) showNotice(`Omzetten naar 0–5 lukte nog niet: ${err.message || err} Probeer het later opnieuw.`);
+      else if (MIGRATIONS.length && !migrationsP) showNotice(`Het bestand omzetten lukte nog niet: ${err.message || err} Probeer het later opnieuw.`);
       // offline of andere fout: de lijst van dit apparaat blijft de reserve
     }
     if (!formTouched) fillFromHistory();
