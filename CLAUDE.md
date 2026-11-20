@@ -57,7 +57,7 @@ het dashboard negeert die (Robin 0 valt buiten 1–10, Vrienden heeft `zero: 'af
 
 - `scale`: knoppen `min`…`max`, labels `low`/`high`, optioneel `default`, `compact: true` (twee compacte
   vragen naast elkaar).
-- `slider`: `min`, `max`, `step` (bv. 0.5).
+- `slider`: `min`, `max`, `step` (bv. 0.5), optioneel `default` (Ochtendscore: Wakker staat standaard op 0,5).
 - `text`: commentaarveld.
 - `short` is de korte naam in het overzicht; `label` is de vraag en tevens de kolomnaam (zonder `?`).
 

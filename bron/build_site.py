@@ -66,7 +66,7 @@ APPS = [
             "dayStartsAt": 0,  # 's ochtends invullen hoort bij vandaag
             "questions": [
                 {"id": "slaap", "label": "Slaap?", "short": "Slaap", "type": "slider", "min": 1, "max": 10, "step": 0.5},
-                {"id": "wakker", "label": "Wakker?", "short": "Wakker", "type": "slider", "min": 0, "max": 4, "step": 0.5},
+                {"id": "wakker", "label": "Wakker?", "short": "Wakker", "type": "slider", "min": 0, "max": 4, "step": 0.5, "default": 0.5},
                 {"id": "gevoel", "label": "Gevoel?", "short": "Gevoel", "type": "scale", "min": 1, "max": 10, "low": "slecht", "high": "goed"},
             ],
         },
