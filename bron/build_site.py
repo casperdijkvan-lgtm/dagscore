@@ -9,6 +9,7 @@ titel en het icoon. Gebruik (vanuit de hoofdmap): python3 bron/build_site.py
 """
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -29,14 +30,12 @@ DROPBOX_KEY = "erjo5qemoyi1iu4"
 APPS = [
     {
         "dir": "",
-        "icon_bg": (27, 90, 134),
-        "bars": [0.55, 0.30, 0.68, 0.80],
+        "icon": "dag",
         "config": None,  # de instellingen die al in dagscore.html staan
     },
     {
         "dir": "werk",
-        "icon_bg": (32, 104, 88),
-        "bars": [0.72, 0.38],
+        "icon": "werk",
         "config": {
             "name": "Werkscore",
             "file": "WorkScores.csv",
@@ -57,8 +56,7 @@ APPS = [
     },
     {
         "dir": "ochtend",
-        "icon_bg": (176, 98, 18),
-        "bars": [0.40, 0.62, 0.80],
+        "icon": "ochtend",
         "config": {
             "name": "Ochtendscore",
             "file": "MorningScores.csv",
@@ -119,23 +117,65 @@ def build_html(src: str, name: str, out_dir: Path) -> None:
     (out_dir / "index.html").write_text(html, encoding="utf-8")
 
 
-def build_icon(out_dir: Path, bg, heights, size: int = 180) -> None:
+# ---------- Iconen: kleurverloop met één duidelijk symbool per app ----------
+def _stroke(d, a, b, w) -> None:
+    """Lijn met ronde uiteinden."""
+    d.line([a, b], fill=255, width=round(w))
+    for x, y in (a, b):
+        d.ellipse([x - w / 2, y - w / 2, x + w / 2, y + w / 2], fill=255)
+
+
+def _rays(d, s, cx, cy, r0, r1, w, degrees) -> None:
+    for deg in degrees:
+        c, n = math.cos(math.radians(deg)), math.sin(math.radians(deg))
+        _stroke(d, (s * (cx + r0 * c), s * (cy + r0 * n)), (s * (cx + r1 * c), s * (cy + r1 * n)), s * w)
+
+
+def _icon_dag(d, s) -> None:
+    """Zon: de hele dag."""
+    r = 0.165
+    d.ellipse([s * (0.5 - r), s * (0.5 - r), s * (0.5 + r), s * (0.5 + r)], fill=255)
+    _rays(d, s, 0.5, 0.5, 0.265, 0.345, 0.056, range(0, 360, 45))
+
+
+def _icon_ochtend(d, s) -> None:
+    """Zon die opkomt boven de horizon."""
+    cx, cy, r = 0.5, 0.60, 0.175
+    d.pieslice([s * (cx - r), s * (cy - r), s * (cx + r), s * (cy + r)], 180, 360, fill=255)
+    _rays(d, s, cx, cy, 0.265, 0.345, 0.052, range(210, 331, 30))
+    _stroke(d, (s * 0.19, s * 0.675), (s * 0.81, s * 0.675), s * 0.052)
+    _stroke(d, (s * 0.35, s * 0.775), (s * 0.65, s * 0.775), s * 0.052)
+
+
+def _icon_werk(d, s) -> None:
+    """Aktetas."""
+    d.rounded_rectangle([s * 0.375, s * 0.235, s * 0.625, s * 0.42], radius=s * 0.055, outline=255, width=round(s * 0.05))
+    d.rounded_rectangle([s * 0.185, s * 0.335, s * 0.815, s * 0.765], radius=s * 0.075, fill=255)
+    d.rectangle([s * 0.185, s * 0.525, s * 0.815, s * 0.555], fill=0)  # naad
+    d.rounded_rectangle([s * 0.425, s * 0.475, s * 0.575, s * 0.605], radius=s * 0.03, fill=0)  # ruimte om het slot
+    d.rounded_rectangle([s * 0.452, s * 0.502, s * 0.548, s * 0.578], radius=s * 0.018, fill=255)  # slot
+
+
+# kleur boven, kleur onder, kleur van het symbool, tekening
+ICONS = {
+    "dag": ((58, 148, 222), (20, 72, 136), (255, 214, 102), _icon_dag),
+    "werk": ((46, 170, 134), (15, 82, 68), (255, 255, 255), _icon_werk),
+    "ochtend": ((247, 150, 54), (186, 58, 44), (255, 243, 218), _icon_ochtend),
+}
+
+
+def build_icon(out_dir: Path, kind: str, size: int = 180) -> None:
     if Image is None:
         print("  (Pillow ontbreekt: bestaand icoon blijft staan)")
         return
-    # Staafjes als niveaumeter, net als de schalen in de app
-    fg = (250, 252, 253)
-    img = Image.new("RGB", (size, size), bg)
-    d = ImageDraw.Draw(img)
-    n = len(heights)
-    bar_w, gap = size * (0.13 if n > 2 else 0.17), size * 0.07
-    total = n * bar_w + (n - 1) * gap
-    x0, base = (size - total) / 2, size * 0.78
-    for i, h in enumerate(heights):
-        x = x0 + i * (bar_w + gap)
-        top = base - h * size * 0.56
-        d.rounded_rectangle([x, top, x + bar_w, base], radius=bar_w * 0.32, fill=fg)
-    img.save(out_dir / "apple-touch-icon.png")
+    top, bottom, color, draw = ICONS[kind]
+    s = size * 8  # groot tekenen en verkleinen geeft gladde randen
+    fade = Image.linear_gradient("L").resize((s, s))
+    img = Image.composite(Image.new("RGB", (s, s), bottom), Image.new("RGB", (s, s), top), fade)
+    mask = Image.new("L", (s, s), 0)
+    draw(ImageDraw.Draw(mask), s)
+    img.paste(color, (0, 0), mask)
+    img.resize((size, size), Image.LANCZOS).save(out_dir / "apple-touch-icon.png", optimize=True)
 
 
 if __name__ == "__main__":
@@ -145,5 +185,5 @@ if __name__ == "__main__":
         out_dir.mkdir(parents=True, exist_ok=True)
         app_src, name = variant(src, app["config"])
         build_html(app_src, name, out_dir)
-        build_icon(out_dir, app["icon_bg"], app["bars"])
+        build_icon(out_dir, app["icon"])
         print(f"Klaar: {name} -> {out_dir / 'index.html'}")

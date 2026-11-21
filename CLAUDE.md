@@ -25,6 +25,9 @@ Het dashboard dat deze bestanden leest staat in een **andere repository**: `casp
 1. Pas `bron/dagscore.html` en/of `bron/build_site.py` aan.
 2. Bouw: `python3 bron/build_site.py` (vanuit de hoofdmap). Pillow is optioneel; zonder Pillow blijven de
    bestaande iconen staan.
+   De iconen staan in `ICONS` in `bron/build_site.py`: Dagscore een zon (blauw), Ochtendscore een opkomende
+   zon (oranje), Werkscore een aktetas (groen). Op de iPhone verandert een icoon pas na opnieuw toevoegen
+   aan het beginscherm.
 3. Commit **zowel de bron als de gebouwde bestanden** en push naar `main`.
 4. Controleer na een minuut dat de live pagina de nieuwe versie heeft: de `<meta name="dagscore-versie">`
    in de live HTML moet gelijk zijn aan die in de gebouwde `index.html`.
