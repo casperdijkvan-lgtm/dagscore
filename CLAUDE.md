@@ -70,7 +70,7 @@ het dashboard negeert die (Robin 0 valt buiten 1–10, Vrienden heeft `zero: 'af
   in het Dropbox-bestand om, maken een reservekopie `…-voor-omzetting-<id>.csv` en een markeringsbestand
   `omzetting-<id>.txt` zodat het nooit twee keer gebeurt. Bestaand: `privestress-0-5` (Dagscore) en
   `werkstress-0-5` (Werkscore): 1–10 → 0–5 (v ≥ 5 → v − 5, anders 0). Soort `{ "drop": "Kolom" }` haalt een kolom
-  helemaal uit het bestand: `test2-verwijderen` (Dagscore) haalde de testkolom Test2 weg. Soort `{ "rename": ["Oud", "Nieuw"] }`
+  helemaal uit het bestand: `test2-verwijderen` (Dagscore) haalde de testkolom Test2 weg, `workload-verwijderen` (Werkscore) de kolom Workload. Soort `{ "rename": ["Oud", "Nieuw"] }`
   hernoemt een kolom (`readRows` leest de oude naam al als de nieuwe): `happiness-naam` (Dagscore) en
   `werk-happiness-naam` (Werkscore) maakten van Happyness Happiness. Id's moeten over alle apps uniek zijn
   (de markeringsbestanden staan samen in Apps › Scores). Verwijder een migratie-id nooit
