@@ -131,11 +131,24 @@ def _rays(d, s, cx, cy, r0, r1, w, degrees) -> None:
         _stroke(d, (s * (cx + r0 * c), s * (cy + r0 * n)), (s * (cx + r1 * c), s * (cy + r1 * n)), s * w)
 
 
+def _star(d, s, cx, cy, r) -> None:
+    """Vierpuntige ster."""
+    points = []
+    for i in range(8):
+        radius = r if i % 2 == 0 else r * 0.3
+        angle = math.radians(i * 45 - 90)
+        points.append((s * (cx + radius * math.cos(angle)), s * (cy + radius * math.sin(angle))))
+    d.polygon(points, fill=255)
+
+
 def _icon_dag(d, s) -> None:
-    """Zon: de hele dag."""
-    r = 0.165
-    d.ellipse([s * (0.5 - r), s * (0.5 - r), s * (0.5 + r), s * (0.5 + r)], fill=255)
-    _rays(d, s, 0.5, 0.5, 0.265, 0.345, 0.056, range(0, 360, 45))
+    """Maansikkel met sterren: het einde van de dag."""
+    cx, cy, r = 0.45, 0.53, 0.275
+    d.ellipse([s * (cx - r), s * (cy - r), s * (cx + r), s * (cy + r)], fill=255)
+    cx, cy, r = 0.575, 0.445, 0.24
+    d.ellipse([s * (cx - r), s * (cy - r), s * (cx + r), s * (cy + r)], fill=0)
+    _star(d, s, 0.665, 0.335, 0.105)
+    _star(d, s, 0.785, 0.525, 0.06)
 
 
 def _icon_ochtend(d, s) -> None:
@@ -158,7 +171,7 @@ def _icon_werk(d, s) -> None:
 
 # kleur boven, kleur onder, kleur van het symbool, tekening
 ICONS = {
-    "dag": ((58, 148, 222), (20, 72, 136), (255, 214, 102), _icon_dag),
+    "dag": ((58, 56, 138), (15, 18, 56), (255, 224, 130), _icon_dag),
     "werk": ((46, 170, 134), (15, 82, 68), (255, 255, 255), _icon_werk),
     "ochtend": ((247, 150, 54), (186, 58, 44), (255, 243, 218), _icon_ochtend),
 }
