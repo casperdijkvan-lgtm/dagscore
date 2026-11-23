@@ -287,6 +287,12 @@ label.btn-quiet { display: inline-block; }
   cursor: pointer;
 }
 .btn-quiet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.login-gate { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--bg); }
+.login-gate[hidden] { display: none; }
+.login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: .75rem; padding: 1.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; text-align: center; }
+.login-card h2 { margin: 0; font-size: 1.3rem; }
+.login-card p { margin: 0 0 .35rem; color: var(--muted); line-height: 1.4; }
+.login-card .btn-quiet { align-self: center; }
 
 /* Geschiedenis */
 .section-label {
@@ -366,6 +372,15 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     <button type="button" class="btn-quiet" id="dbxLogout" hidden>Ontkoppel Dropbox op dit apparaat</button>
   </details>
 </main>
+
+<div class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-labelledby="loginGateTitle" hidden>
+  <div class="login-card">
+    <h2 id="loginGateTitle">Log in bij Dropbox</h2>
+    <p id="loginGateText"></p>
+    <button type="button" class="save-btn" id="loginGateBtn">Inloggen bij Dropbox</button>
+    <button type="button" class="btn-quiet" id="loginGateLater">Later</button>
+  </div>
+</div>
 
 <script id="app-config" type="application/json">
 {
@@ -522,19 +537,25 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       code_challenge_method: 'S256', redirect_uri: REDIRECT, token_access_type: 'offline', state });
     location.href = 'https://www.dropbox.com/oauth2/authorize?' + p;
   }
-  // Bij openen zonder werkende koppeling meteen naar de Dropbox-inlog. Niet als je net zelf uitlogde,
-  // het inloggen net misging, je offline bent of al iets invulde, en hooguit één keer per minuut (geen lus).
+  // Bij openen zonder werkende koppeling: altijd een inlogscherm. In een browsertabblad ook meteen door
+  // naar Dropbox. In een app op het beginscherm is één tik nodig, want daar kan doorsturen zonder tik
+  // stil mislukken. Geen scherm als je zelf uitlogde, "Later" koos of al iets invulde.
   const AUTO_LOGIN_KEY = 'dropbox.autologin.v1';
-  let autoLoginOff = false;
+  let autoLoginOff = false, gateClosed = false, loginProblem = '';
+  const isInstalled = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   function autoLogin() {
-    if (!DBX_KEY || isLinked() || autoLoginOff || formTouched || saving || navigator.onLine === false) return false;
+    if (!DBX_KEY || isLinked() || formTouched || saving || gateClosed) return false;
     if (location.hostname !== 'casperdijkvan-lgtm.github.io') return false; // alleen dit adres kent Dropbox
+    const offline = navigator.onLine === false;
+    $('loginGateText').textContent = loginProblem || (offline
+      ? `${APP.name} is niet verbonden met Dropbox en je bent offline. Log in zodra je weer internet hebt.`
+      : `${APP.name} is niet verbonden met Dropbox. Log in om je scores op te halen en op te slaan.`);
+    $('loginGate').hidden = false;
+    if (autoLoginOff || offline || isInstalled()) return false;
     try {
       if (Date.now() - (Number(localStorage.getItem(AUTO_LOGIN_KEY)) || 0) < 60000) return false;
       localStorage.setItem(AUTO_LOGIN_KEY, String(Date.now()));
     } catch (e) { return false; }
-    setLabel('Naar Dropbox…');
-    hint.textContent = 'Geen verbinding met Dropbox, je gaat nu inloggen.';
     startLogin();
     return true;
   }
@@ -1043,8 +1064,10 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     }
   });
 
+  $('loginGateBtn').addEventListener('click', () => startLogin());
+  $('loginGateLater').addEventListener('click', () => { gateClosed = true; $('loginGate').hidden = true; update(); });
   $('dbxLogout').addEventListener('click', async () => {
-    autoLoginOff = true;
+    gateClosed = true;
     try { await dbxCall('https://api.dropboxapi.com/2/auth/token/revoke', null); } catch (e) { /* niet erg */ }
     saveAuth(null);
     fileRows = null;
@@ -1126,8 +1149,6 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     if (autoLogin()) return;
     checkVersion(); loadFile();
   });
-  // Met de terugknop terug van Dropbox: de knop weer normaal tonen
-  window.addEventListener('pageshow', (e) => { if (e.persisted) update(); });
   setInterval(refreshDay, 30000);
 
   if (!['casperdijkvan-lgtm.github.io', 'localhost'].includes(location.hostname)) $('moved').hidden = false;
@@ -1148,14 +1169,13 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     } catch (err) {
       returning = true;
       autoLoginOff = true;
+      loginProblem = 'Inloggen bij Dropbox lukte niet: ' + (err.message || err);
       hint.classList.add('nudge');
-      hint.textContent = 'Inloggen bij Dropbox lukte niet: ' + (err.message || err);
+      hint.textContent = loginProblem;
     }
     if (returning) { renderDay(); update(); updateDbxState(); $('setup').open = !isLinked(); }
-    else {
-      if (autoLogin()) return;
-      checkVersion();
-    }
+    if (autoLogin()) return;
+    if (!returning) checkVersion();
     loadFile();
   })();
 
