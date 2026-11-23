@@ -522,6 +522,22 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       code_challenge_method: 'S256', redirect_uri: REDIRECT, token_access_type: 'offline', state });
     location.href = 'https://www.dropbox.com/oauth2/authorize?' + p;
   }
+  // Bij openen zonder werkende koppeling meteen naar de Dropbox-inlog. Niet als je net zelf uitlogde,
+  // het inloggen net misging, je offline bent of al iets invulde, en hooguit één keer per minuut (geen lus).
+  const AUTO_LOGIN_KEY = 'dropbox.autologin.v1';
+  let autoLoginOff = false;
+  function autoLogin() {
+    if (!DBX_KEY || isLinked() || autoLoginOff || formTouched || saving || navigator.onLine === false) return false;
+    if (location.hostname !== 'casperdijkvan-lgtm.github.io') return false; // alleen dit adres kent Dropbox
+    try {
+      if (Date.now() - (Number(localStorage.getItem(AUTO_LOGIN_KEY)) || 0) < 60000) return false;
+      localStorage.setItem(AUTO_LOGIN_KEY, String(Date.now()));
+    } catch (e) { return false; }
+    setLabel('Naar Dropbox…');
+    hint.textContent = 'Geen verbinding met Dropbox, je gaat nu inloggen.';
+    startLogin();
+    return true;
+  }
   async function tokenRequest(params) {
     const res = await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', body: new URLSearchParams(params) });
     const body = await res.json().catch(() => ({}));
@@ -963,8 +979,10 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       const cur = await dbxDownload();
       fileRows = toFileRows(cur.text || '');
     } catch (err) {
-      if (err instanceof NeedLogin) fileRows = null;
-      else if (MIGRATIONS.length && !migrationsP) showNotice(`Het bestand omzetten lukte nog niet: ${err.message || err} Probeer het later opnieuw.`);
+      if (err instanceof NeedLogin) {
+        fileRows = null;
+        if (autoLogin()) return;
+      } else if (MIGRATIONS.length && !migrationsP) showNotice(`Het bestand omzetten lukte nog niet: ${err.message || err} Probeer het later opnieuw.`);
       // offline of andere fout: de lijst van dit apparaat blijft de reserve
     }
     if (!formTouched) fillFromHistory();
@@ -1026,6 +1044,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   });
 
   $('dbxLogout').addEventListener('click', async () => {
+    autoLoginOff = true;
     try { await dbxCall('https://api.dropboxapi.com/2/auth/token/revoke', null); } catch (e) { /* niet erg */ }
     saveAuth(null);
     fileRows = null;
@@ -1103,8 +1122,12 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
-    refreshDay(); checkVersion(); loadFile();
+    refreshDay();
+    if (autoLogin()) return;
+    checkVersion(); loadFile();
   });
+  // Met de terugknop terug van Dropbox: de knop weer normaal tonen
+  window.addEventListener('pageshow', (e) => { if (e.persisted) update(); });
   setInterval(refreshDay, 30000);
 
   if (!['casperdijkvan-lgtm.github.io', 'localhost'].includes(location.hostname)) $('moved').hidden = false;
@@ -1124,11 +1147,15 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       returning = await finishLogin();
     } catch (err) {
       returning = true;
+      autoLoginOff = true;
       hint.classList.add('nudge');
       hint.textContent = 'Inloggen bij Dropbox lukte niet: ' + (err.message || err);
     }
     if (returning) { renderDay(); update(); updateDbxState(); $('setup').open = !isLinked(); }
-    else checkVersion();
+    else {
+      if (autoLogin()) return;
+      checkVersion();
+    }
     loadFile();
   })();
 

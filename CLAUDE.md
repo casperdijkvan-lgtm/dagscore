@@ -68,6 +68,9 @@ het dashboard negeert die (Robin 0 valt buiten 1–10, Vrienden heeft `zero: 'af
 
 - Dropbox-app **DagScores**, app key `erjo5qemoyi1iu4` (niet geheim; inloggen via PKCE in de browser),
   toegang: App folder (`Apps/Scores`). Redirect-URI's moeten in de Dropbox-app staan voor elke app-URL.
+- Bij openen controleert de app de koppeling; werkt die niet, dan gaat hij meteen naar de Dropbox-inlog
+  (`autoLogin()`). Niet als je net zelf uitlogde, het inloggen net misging, je offline bent of al iets
+  invulde, en hooguit één keer per minuut (`dropbox.autologin.v1`), zodat er nooit een lus ontstaat.
 - Opslaan: download → regel samenvoegen → upload met `update(rev)`, max. 3 pogingen bij een conflict.
 - **Eenmalige omzettingen** (`"migrations"` in de config, `runMigration()` in de bron): zetten oude waarden
   in het Dropbox-bestand om, maken een reservekopie `…-voor-omzetting-<id>.csv` en een markeringsbestand
