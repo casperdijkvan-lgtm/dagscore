@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="0bd78d48ba">
+<meta name="dagscore-versie" content="0c6eedcea1">
 <title>Werkscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -796,11 +796,19 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   const sliderText = (q, v) => (q.time ? fmtClock(v) : fmtHalf(v));
   // Berekende vraag ("type": "calc"): uren tussen twee tijdschuiven, min een derde schuif (bv. slaap)
   const sliderNum = (id) => { const sl = $(id); return sl && sl.dataset.set === '1' ? Number(sl.value) : null; };
-  function calcHours(q) {
+  // Tijd tussen de twee schuiven, over middernacht heen; negatief als "to" vóór "from" ligt
+  // (bv. naar bed 05:00, opgestaan 04:00). Hooguit 15 uur.
+  function spanHours(q) {
     const from = sliderNum(q.calc.from), to = sliderNum(q.calc.to);
     if (from == null || to == null) return null;
     let t = to - from;
-    while (t <= 0) t += 24;
+    while (t <= -9) t += 24;
+    while (t > 15) t -= 24;
+    return t;
+  }
+  function calcHours(q) {
+    const t = spanHours(q);
+    if (t == null) return null;
     return t - (q.calc.minus ? sliderNum(q.calc.minus) ?? 0 : 0);
   }
   // Weergavevolgorde: "order" in de instellingen (de kolomvolgorde in het bestand blijft gelijk);
@@ -1015,7 +1023,9 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     const ask = DISPLAY.filter((q) => missing.includes(q) && q.type !== 'calc'); // in de volgorde op het scherm
     if (missing.length) {
       saveBtn.setAttribute('aria-disabled', 'true');
+      const calcQ = missing.find((q) => q.type === 'calc');
       hint.textContent = ask.length ? 'Nog invullen: ' + ask.map(colName).join(', ') + '.'
+        : spanHours(calcQ) <= 0 ? 'Opgestaan ligt vóór naar bed. Kijk de tijden na.'
         : 'Wakker gelegen kan niet langer zijn dan de tijd tussen naar bed en opgestaan.';
     } else {
       saveBtn.removeAttribute('aria-disabled');

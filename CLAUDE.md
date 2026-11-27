@@ -62,14 +62,14 @@ het dashboard negeert die (Robin 0 valt buiten 1–10, Vrienden heeft `zero: 'af
   vragen naast elkaar).
 - `slider`: `min`, `max`, `step` (bv. 0.5), optioneel `default` (Ochtendscore: Wakker staat standaard op 0,5).
   Met `time: true` is het een tijdschuif: waarden zijn uren van de dag, voorbij middernacht doorgeteld
-  (`min: 20, max: 27` is 20:00–03:00), opgeslagen als `23:30`.
+  (`min: 21, max: 30` is 21:00–06:00); `default` als tijd (`"22:30"`), opgeslagen als `23:30`.
 - `calc`: geen invoer maar een berekende waarde: `calc: {from, to, minus}` geeft de uren tussen twee
   tijdschuiven min een derde schuif, met halve uren en een komma (Ochtendscore: Slaap = opgestaan − naar
   bed − wakker gelegen). Is de uitkomst negatief, dan kan er niet worden opgeslagen.
 - `text`: commentaarveld.
 - `short` is de korte naam in het overzicht; `label` is de vraag en tevens de kolomnaam (zonder `?`),
   tenzij `col` een andere kolomnaam geeft (Ochtendscore: "Uren wakker gelegen?" schrijft naar `Wakker`).
-- Ochtendscore: vragen Naar bed (20:00–03:00), Opgestaan (04:00–12:00), Uren wakker gelegen, Geslapen
+- Ochtendscore: vragen Naar bed (21:00–06:00, standaard 22:30), Opgestaan (04:00–12:00, standaard 07:30), Uren wakker gelegen, Geslapen
   (berekend, kolom `Slaap`) en Gevoel. Kolommen: `Datum;Slaap;Wakker;Gevoel;Naar bed;Opgestaan`.
 
 ## Dropbox
