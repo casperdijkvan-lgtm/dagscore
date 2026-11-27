@@ -62,10 +62,16 @@ APPS = [
             "file": "MorningScores.csv",
             "storeKey": "ochtendscore.verstuurd.v1",
             "dayStartsAt": 0,  # 's ochtends invullen hoort bij vandaag
+            # Slaap (uren) rekent de app uit: opgestaan − naar bed − wakker gelegen. De kolommen Slaap en
+            # Wakker houden hun naam, zodat de geschiedenis en het dashboard blijven kloppen.
+            "order": ["bed", "op", "wakker", "slaap", "gevoel"],
             "questions": [
-                {"id": "slaap", "label": "Slaap?", "short": "Slaap", "type": "slider", "min": 1, "max": 10, "step": 0.5},
-                {"id": "wakker", "label": "Wakker?", "short": "Wakker", "type": "slider", "min": 0, "max": 4, "step": 0.5, "default": 0.5},
+                {"id": "slaap", "label": "Geslapen", "col": "Slaap", "short": "Slaap", "type": "calc", "unit": "uur",
+                 "calc": {"from": "bed", "to": "op", "minus": "wakker"}},
+                {"id": "wakker", "label": "Uren wakker gelegen?", "col": "Wakker", "short": "Wakker", "type": "slider", "min": 0, "max": 4, "step": 0.5, "default": 0.5},
                 {"id": "gevoel", "label": "Gevoel?", "short": "Gevoel", "type": "scale", "min": 1, "max": 10, "low": "slecht", "high": "goed"},
+                {"id": "bed", "label": "Naar bed?", "short": "Bed", "type": "slider", "time": True, "min": 20, "max": 27, "step": 0.5},
+                {"id": "op", "label": "Opgestaan?", "short": "Op", "type": "slider", "time": True, "min": 4, "max": 12, "step": 0.5},
             ],
         },
     },

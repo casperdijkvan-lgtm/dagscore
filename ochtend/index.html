@@ -17,7 +17,7 @@ body { margin: 0; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 </style>
-<meta name="dagscore-versie" content="7b46affad2">
+<meta name="dagscore-versie" content="1e1fdfd1ef">
 <title>Ochtendscore</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -409,19 +409,31 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   "file": "MorningScores.csv",
   "storeKey": "ochtendscore.verstuurd.v1",
   "dayStartsAt": 0,
+  "order": [
+    "bed",
+    "op",
+    "wakker",
+    "slaap",
+    "gevoel"
+  ],
   "questions": [
     {
       "id": "slaap",
-      "label": "Slaap?",
+      "label": "Geslapen",
+      "col": "Slaap",
       "short": "Slaap",
-      "type": "slider",
-      "min": 1,
-      "max": 10,
-      "step": 0.5
+      "type": "calc",
+      "unit": "uur",
+      "calc": {
+        "from": "bed",
+        "to": "op",
+        "minus": "wakker"
+      }
     },
     {
       "id": "wakker",
-      "label": "Wakker?",
+      "label": "Uren wakker gelegen?",
+      "col": "Wakker",
       "short": "Wakker",
       "type": "slider",
       "min": 0,
@@ -438,6 +450,26 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       "max": 10,
       "low": "slecht",
       "high": "goed"
+    },
+    {
+      "id": "bed",
+      "label": "Naar bed?",
+      "short": "Bed",
+      "type": "slider",
+      "time": true,
+      "min": 20,
+      "max": 27,
+      "step": 0.5
+    },
+    {
+      "id": "op",
+      "label": "Opgestaan?",
+      "short": "Op",
+      "type": "slider",
+      "time": true,
+      "min": 4,
+      "max": 12,
+      "step": 0.5
     }
   ],
   "dropboxKey": "erjo5qemoyi1iu4"
@@ -449,7 +481,7 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   const APP = JSON.parse(document.getElementById('app-config').textContent);
   const STORE_KEY = APP.storeKey;
   const QUESTIONS = APP.questions;
-  const colName = (q) => q.label.replace('?', '');
+  const colName = (q) => q.col || q.label.replace('?', '');
   const COLUMNS = ['Datum', ...QUESTIONS.map(colName)]; // geen Tijd-kolom meer
   const RENAMED = Object.fromEntries((APP.migrations || []).filter((m) => m.rename).map((m) => m.rename));
   const TEXT_COLS = new Set(QUESTIONS.filter((q) => q.type === 'text').map(colName));
@@ -759,6 +791,26 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
   // ---------- Vragen opbouwen ----------
   const THUMB = 28;
   const fmtHalf = (v) => String(v).replace('.', ',');
+  // Tijdschuif ("time": true): de waarde is een uur van de dag, voorbij middernacht doorgeteld (25 = 01:00).
+  // In het bestand staat de tijd als 23:30.
+  const fmtClock = (h) => { const m = Math.round((((h % 24) + 24) % 24) * 60); return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+  const parseClock = (q, s) => {
+    const m = String(s ?? '').trim().match(/^(\d{1,2})[:.](\d{2})$/);
+    if (!m) return null;
+    let h = Number(m[1]) + Number(m[2]) / 60;
+    if (h < q.min) h += 24;
+    return h;
+  };
+  const sliderText = (q, v) => (q.time ? fmtClock(v) : fmtHalf(v));
+  // Berekende vraag ("type": "calc"): uren tussen twee tijdschuiven, min een derde schuif (bv. slaap)
+  const sliderNum = (id) => { const sl = $(id); return sl && sl.dataset.set === '1' ? Number(sl.value) : null; };
+  function calcHours(q) {
+    const from = sliderNum(q.calc.from), to = sliderNum(q.calc.to);
+    if (from == null || to == null) return null;
+    let t = to - from;
+    while (t <= 0) t += 24;
+    return t - (q.calc.minus ? sliderNum(q.calc.minus) ?? 0 : 0);
+  }
   // Weergavevolgorde: "order" in de instellingen (de kolomvolgorde in het bestand blijft gelijk);
   // een vraag met "after" komt direct na die vraag
   let DISPLAY = QUESTIONS.slice();
@@ -790,11 +842,18 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       let ticks = '';
       for (let i = Math.ceil(q.min); i <= Math.floor(q.max); i++) {
         const f = (i - q.min) / (q.max - q.min);
-        ticks += `<span style="left:calc(${(f * 100).toFixed(3)}% + ${((0.5 - f) * THUMB).toFixed(2)}px)">${i}</span>`;
+        ticks += `<span style="left:calc(${(f * 100).toFixed(3)}% + ${((0.5 - f) * THUMB).toFixed(2)}px)">${q.time ? i % 24 : i}</span>`;
       }
       wrap.innerHTML = `<div class="q-head"><h2 class="q-title" id="t-${q.id}">${esc(q.label)}</h2><span class="q-val unset" id="v-${q.id}">schuif of tik</span></div>`
         + `<input type="range" class="slider" id="${q.id}" name="${q.id}" min="${q.min}" max="${q.max}" step="${q.step || 1}" value="${(q.min + q.max) / 2}" data-set="0" aria-labelledby="t-${q.id}">`
         + `<div class="ticks" aria-hidden="true">${ticks}</div>`;
+      form.append(wrap);
+      continue;
+    }
+    if (q.type === 'calc') {
+      const wrap = document.createElement('div');
+      wrap.className = 'q q-calc';
+      wrap.innerHTML = `<div class="q-head"><h2 class="q-title" id="t-${q.id}">${esc(q.label)}</h2><span class="q-val unset" id="v-${q.id}" aria-live="polite"></span></div>`;
       form.append(wrap);
       continue;
     }
@@ -832,7 +891,8 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     const out = {};
     for (const q of QUESTIONS) {
       if (q.type === 'text') { out[q.id] = $(q.id).value.replace(/[\r\n]+/g, ' ').trim(); continue; }
-      if (q.type === 'slider') { const sl = $(q.id); out[q.id] = sl.dataset.set === '1' ? fmtHalf(Number(sl.value)) : null; continue; }
+      if (q.type === 'slider') { const sl = $(q.id); out[q.id] = sl.dataset.set === '1' ? sliderText(q, Number(sl.value)) : null; continue; }
+      if (q.type === 'calc') { const h = calcHours(q); out[q.id] = h == null || h < 0 ? null : fmtHalf(h); continue; }
       const el = form.querySelector(`input[name="${q.id}"]:checked`);
       out[q.id] = el ? el.value : null;
       if (el && halfOn(q) && Number(el.value) < q.max) out[q.id] = String(Number(el.value) + 0.5).replace('.', ',');
@@ -850,10 +910,11 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
     for (const q of QUESTIONS) {
       let v = hit ? hit.values[q.id] : null;
       if (q.type === 'text') { $(q.id).value = v ?? ''; continue; }
+      if (q.type === 'calc') continue; // volgt uit de schuiven
       if (q.type === 'slider') {
         const sl = $(q.id);
         if (v == null && q.default != null) v = q.default;
-        const n = toNum(v);
+        const n = q.time ? parseClock(q, v) : toNum(v);
         if (n == null || isNaN(n)) { sl.dataset.set = '0'; sl.value = String((q.min + q.max) / 2); }
         else { sl.dataset.set = '1'; sl.value = String(Math.min(q.max, Math.max(q.min, n))); }
         continue;
@@ -919,8 +980,14 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
         sl.style.setProperty('--pct', (((Number(sl.value) - q.min) / (q.max - q.min)) * 100).toFixed(2) + '%');
         const set = sl.dataset.set === '1';
         out.classList.toggle('unset', !set);
-        out.textContent = set ? fmtHalf(Number(sl.value)) : 'schuif of tik';
-        sl.setAttribute('aria-valuetext', set ? fmtHalf(Number(sl.value)) : 'nog niet ingevuld');
+        out.textContent = set ? sliderText(q, Number(sl.value)) : 'schuif of tik';
+        sl.setAttribute('aria-valuetext', set ? sliderText(q, Number(sl.value)) : 'nog niet ingevuld');
+        continue;
+      }
+      if (q.type === 'calc') {
+        const out = $('v-' + q.id), h = calcHours(q);
+        out.classList.toggle('unset', h == null || h < 0);
+        out.textContent = h == null ? 'volgt uit je tijden' : h < 0 ? 'klopt niet' : `${fmtHalf(h)}${q.unit ? ' ' + q.unit : ''}`;
         continue;
       }
       if (q.type !== 'scale') continue;
@@ -953,9 +1020,11 @@ code { font-family: var(--font-mono); font-size: .88em; overflow-wrap: anywhere;
       return;
     }
     const missing = missingOf(a);
+    const ask = DISPLAY.filter((q) => missing.includes(q) && q.type !== 'calc'); // in de volgorde op het scherm
     if (missing.length) {
       saveBtn.setAttribute('aria-disabled', 'true');
-      hint.textContent = 'Nog invullen: ' + missing.map(colName).join(', ') + '.';
+      hint.textContent = ask.length ? 'Nog invullen: ' + ask.map(colName).join(', ') + '.'
+        : 'Wakker gelegen kan niet langer zijn dan de tijd tussen naar bed en opgestaan.';
     } else {
       saveBtn.removeAttribute('aria-disabled');
       if (!armed && !flashing) hint.textContent = `Slaat de regel voor deze dag op in Dropbox › Apps › Scores › ${APP.file}.`;
